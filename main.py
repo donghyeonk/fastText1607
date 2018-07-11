@@ -65,11 +65,12 @@ def test(device, loader, model, epoch):
             pred = output.max(1, keepdim=True)[1]
             correct += pred.eq(target.view_as(pred)).sum().item()
     eval_loss /= len(loader.dataset)
+    acc = correct / len(loader.dataset)
     print('\t{} Epoch {}\tLoss: {:.6f}, Accuracy: {}/{} ({:.1f}%)'.format(
         datetime.now(), epoch, eval_loss, correct, len(loader.dataset),
-        100. * correct / len(loader.dataset)))
+        100. * acc))
 
-    return eval_loss
+    return eval_loss, acc
 
 
 def main():
@@ -83,14 +84,14 @@ def main():
     parser.add_argument('--num_classes', type=int, default=4)
 
     parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--n_features', type=int, default=2 ** 12)  # TODO
+    parser.add_argument('--n_features', type=int, default=2 ** 13)  # TODO
     parser.add_argument('--n_train_examples', type=int, default=30000)
     parser.add_argument('--n_test_examples', type=int, default=1900)
 
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--wd', type=float, default=1e-5)  #
     parser.add_argument('--batch_size', type=int, default=24)
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=100)  #
     parser.add_argument('--log_interval', type=int, default=1000)
     args = parser.parse_args()
 
@@ -103,9 +104,13 @@ def main():
     train_loader, test_loader = \
         ag_dataset.get_dataloaders(batch_size=args.batch_size)
 
+    best_acc = 0.
     for epoch in range(1, args.epochs + 1):
         train(device, train_loader, ft, epoch, args)
-        test(device, test_loader, ft, epoch)
+        _, acc = test(device, test_loader, ft, epoch)
+        if acc > best_acc:
+            best_acc = acc
+        print('\tBest Acc. {:.1f}%'.format(100 * best_acc))
 
 
 if __name__ == '__main__':

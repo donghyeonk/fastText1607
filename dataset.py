@@ -18,9 +18,9 @@ class AGData(object):
     def load(self):
         train_data = list()
         test_data = list()
-        ngrams_list = list()
 
         cat_counts = [0] * self.num_classes
+        ngram_set = set()
 
         line_cnt = 0
         errs = 0
@@ -48,18 +48,27 @@ class AGData(object):
 
                 title = cols[2]
                 description = cols[5]
-                ngrams = get_ngrams(title + ' ' + description,
-                                    n=self.config.n_grams)
-                ngrams_list.append((ngrams, is_test))
+                title_desc = title + ' ' + description
+
+                bow = title_desc.split(' ')
+                bow = ['<s>'] + bow + ['</s>']
+                ngrams = get_ngrams(bow, n=self.config.n_grams)
+
+                for w in bow:
+                    ngram_set.add(w)
+
+                for ng in ngrams:
+                    ngram_set.add(ng)
 
                 y = self.top_categories.index(category)
                 if not is_test:
-                    train_data.append([ngrams, y])
+                    train_data.append([bow + ngrams, y])
                 else:
-                    test_data.append([ngrams, y])
+                    test_data.append([bow + ngrams, y])
 
         print('lines', line_cnt)
         print('errs', errs)
+        print('# of unique ngrams', len(ngram_set))
 
         f = self.hasher.transform(td[0] for td in (train_data+test_data))
         fh = f.toarray()
@@ -94,7 +103,7 @@ class AGData(object):
         for cat in \
                 sorted(category_dict,
                        key=category_dict.get, reverse=True)[:topn]:
-            print(cat, category_dict[cat])
+            print(cat, category_dict[cat], sep='\t')
             top_categories.append(cat)
         return top_categories
 
@@ -116,8 +125,8 @@ class AGData(object):
         return train_loader, test_loader
 
 
-def get_ngrams(text, n=2):
-    return [text[i: i+n] for i in range(len(text)-(n-1))]
+def get_ngrams(words, n=2):
+    return ['_'.join(words[i: i+n]) for i in range(len(words)-(n-1))]
 
 
 class AGDataset(Dataset):
@@ -132,10 +141,18 @@ class AGDataset(Dataset):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
     # http://www.di.unipi.it/~gulli/newsspace200.xml.bz
-    data_path = './data/newsSpace'
-    agdata = AGData(data_path)
-    # tr_loader, _, _ = agdata.get_dataloaders(batch_size=16, num_workers=4)
+    parser.add_argument('--data_path', type=str, default='./data/newsSpace')
+    parser.add_argument('--num_classes', type=int, default=4)
+    parser.add_argument('--n_grams', type=int, default=2)
+    parser.add_argument('--n_features', type=int, default=2 ** 12)  # TODO
+    parser.add_argument('--n_train_examples', type=int, default=30000)
+    parser.add_argument('--n_test_examples', type=int, default=1900)
+    args = parser.parse_args()
+    agdata = AGData(args)
+    # tr_loader, _ = agdata.get_dataloaders(batch_size=24, num_workers=4)
     # print(len(tr_loader.dataset))
     # for batch_idx, batch in enumerate(tr_loader):
     #     if batch_idx % 100 == 0:

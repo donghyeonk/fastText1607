@@ -1,3 +1,4 @@
+from datetime import datetime
 import spacy
 import torch
 from torch.utils.data import Dataset
@@ -19,7 +20,6 @@ class AGData(object):
 
         self.max_len = 200
 
-        self.nlp = spacy.load('en_core_web_sm')
         self.train_data, self.test_data = self.load()
 
     def load(self):
@@ -27,9 +27,13 @@ class AGData(object):
         test_data = list()
 
         cat_counts = [0] * self.num_classes
+
+        nlp = spacy.load('en_core_web_sm')
+
         ngram_set = set()
 
         max_len_real = 0
+        x_lens = list()
 
         line_cnt = 0
         errs = 0
@@ -39,8 +43,8 @@ class AGData(object):
                 line_cnt += 1
 
                 if line_cnt % 100000 == 0:
-                    print(line_cnt)
-                
+                    print(datetime.now(), line_cnt)
+
                 cols = line.split('\t')
                 if 6 > len(cols):
                     errs += 1
@@ -66,7 +70,7 @@ class AGData(object):
                 # b_o_w = ['<s>'] + title_desc.split(' ') + ['</s>']
                 b_o_w = \
                     ['<s>'] \
-                    + [token.text for token in self.nlp(title_desc)] \
+                    + [token.text for token in nlp(title_desc)] \
                     + ['</s>']
                 ngram = get_ngrams(b_o_w, n=self.config.n_grams)
                 b_o_ngrams = b_o_w + ngram
@@ -87,6 +91,8 @@ class AGData(object):
                 if max_len_real < bon_len:
                     max_len_real = bon_len
 
+                x_lens.append(bon_len)
+
                 x = [self.ngram2idx[ng] for ng in b_o_ngrams]
                 while len(x) < self.max_len:
                     x.append(self.ngram2idx['PAD'])
@@ -104,6 +110,7 @@ class AGData(object):
         print('# of unique ngrams', len(ngram_set))
         print('max_len (setting)', self.max_len)
         print('max_len (real)', max_len_real)
+        print('avg. len', sum(x_lens) / len(x_lens))
 
         return train_data, test_data
 

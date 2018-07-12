@@ -41,7 +41,7 @@ def train(device, loader, model, epoch, config):
     train_loss = 0.
     example_count = 0
     for batch_idx, ex in enumerate(loader):
-        targets = torch.tensor(ex[1], dtype=torch.int64, device=device)
+        targets = torch.tensor(ex[1], dtype=torch.float64, device=device)
         model.optimizer.zero_grad()
         outputs = model(torch.tensor(ex[0], dtype=torch.int64, device=device))
         loss = model.criterion(outputs, targets)
@@ -71,7 +71,7 @@ def test(device, loader, model, epoch):
     correct = 0
     with torch.no_grad():
         for batch_idx, ex in enumerate(loader):
-            target = torch.tensor(ex[1], dtype=torch.int64, device=device)
+            target = torch.tensor(ex[1], dtype=torch.float64, device=device)
             output = \
                 model(torch.tensor(ex[0], dtype=torch.int64, device=device))
             loss = model.criterion(output, target)

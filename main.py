@@ -18,6 +18,12 @@ class fastText(nn.Module):
         self.hidden = nn.Linear(config.embedding_dim, config.hidden_size)
         self.fc = nn.Linear(config.hidden_size, config.num_classes)
 
+        # init.
+        nn.init.xavier_uniform_(self.hidden.weight, gain=1)
+        nn.init.uniform_(self.hidden.bias)
+        nn.init.xavier_uniform_(self.fc.weight, gain=1)
+        nn.init.uniform_(self.fc.bias)
+
         self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
         self.criterion = nn.NLLLoss()
 
@@ -41,7 +47,7 @@ def train(device, loader, model, epoch, config):
     train_loss = 0.
     example_count = 0
     for batch_idx, ex in enumerate(loader):
-        targets = torch.tensor(ex[1], dtype=torch.float64, device=device)
+        targets = torch.tensor(ex[1], dtype=torch.int64, device=device)
         model.optimizer.zero_grad()
         outputs = model(torch.tensor(ex[0], dtype=torch.int64, device=device))
         loss = model.criterion(outputs, targets)
@@ -71,7 +77,7 @@ def test(device, loader, model, epoch):
     correct = 0
     with torch.no_grad():
         for batch_idx, ex in enumerate(loader):
-            target = torch.tensor(ex[1], dtype=torch.float64, device=device)
+            target = torch.tensor(ex[1], dtype=torch.int64, device=device)
             output = \
                 model(torch.tensor(ex[0], dtype=torch.int64, device=device))
             loss = model.criterion(output, target)
@@ -101,7 +107,7 @@ def main():
     parser.add_argument('--n_train_examples', type=int, default=30000)
     parser.add_argument('--n_test_examples', type=int, default=1900)
 
-    parser.add_argument('--lr', type=float, default=5e-3)  #
+    parser.add_argument('--lr', type=float, default=5e-2)  #
     parser.add_argument('--wd', type=float, default=0)  #
     parser.add_argument('--batch_size', type=int, default=256)  #
     parser.add_argument('--epochs', type=int, default=50)
@@ -116,6 +122,7 @@ def main():
 
     args_dict = vars(args)
     args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
+    print('vocab_size', args_dict['vocab_size'])
 
     ft = fastText(args)
     train_loader, test_loader = \

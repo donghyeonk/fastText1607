@@ -17,6 +17,8 @@ class AGData(object):
         self.idx2ngram = dict()
         self.ngram2idx['PAD'] = 0
         self.idx2ngram[0] = 'PAD'
+        self.ngram2idx['UNK'] = 1
+        self.idx2ngram[1] = 'UNK'
 
         self.max_len = 200
 
@@ -76,8 +78,10 @@ class AGData(object):
                 b_o_ngrams = b_o_w + ngram
                 for ng in b_o_ngrams:
                     ngram_set.add(ng)
+
+                    # update dict.
                     idx = self.ngram2idx.get(ng)
-                    if idx is None:
+                    if idx is None and not is_test:
                         idx = len(self.ngram2idx)
                         self.ngram2idx[ng] = idx
                         self.idx2ngram[idx] = ng
@@ -93,7 +97,9 @@ class AGData(object):
 
                 x_lens.append(bon_len)
 
-                x = [self.ngram2idx[ng] for ng in b_o_ngrams]
+                x = [self.ngram2idx[ng] if ng in self.ngram2idx
+                     else self.ngram2idx['UNK']
+                     for ng in b_o_ngrams]
                 while len(x) < self.max_len:
                     x.append(self.ngram2idx['PAD'])
                 assert len(x) == self.max_len
@@ -110,7 +116,9 @@ class AGData(object):
         print('# of unique ngrams', len(ngram_set))
         print('max_len (setting)', self.max_len)
         print('max_len (real)', max_len_real)
-        print('avg. len', sum(x_lens) / len(x_lens))
+        print('avg_len {:.1f}'.format(sum(x_lens) / len(x_lens)))
+        print('max_len coverage {:.3f}'.format(
+              sum([1 for xl in x_lens if xl <= self.max_len]) / len(x_lens)))
 
         return train_data, test_data
 
@@ -185,20 +193,26 @@ class AGDataset(Dataset):
 
 if __name__ == '__main__':
     import argparse
+    import os
     import pickle
     parser = argparse.ArgumentParser()
     # http://www.di.unipi.it/~gulli/newsspace200.xml.bz
     parser.add_argument('--data_path', type=str, default='./data/newsSpace')
+    parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
     parser.add_argument('--num_classes', type=int, default=4)
     parser.add_argument('--n_grams', type=int, default=2)
     parser.add_argument('--n_features', type=int, default=2 ** 12)  # TODO
     parser.add_argument('--n_train_examples', type=int, default=30000)
     parser.add_argument('--n_test_examples', type=int, default=1900)
     args = parser.parse_args()
-    agdata = AGData(args)
 
-    with open('./data/ag.pkl', 'wb') as f_pkl:
-        pickle.dump(agdata, f_pkl)
+    if os.path.exists(args.pickle_path):
+        with open(args.pickle_path, 'rb') as f_pkl:
+            agdata = pickle.load(f_pkl)
+    else:
+        agdata = AGData(args)
+        with open(args.pickle_path, 'wb') as f_pkl:
+            pickle.dump(agdata, f_pkl)
 
     tr_loader, _ = agdata.get_dataloaders(batch_size=24, num_workers=4)
     print(len(tr_loader.dataset))

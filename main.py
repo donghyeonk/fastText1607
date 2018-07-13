@@ -24,7 +24,7 @@ class FastText(nn.Module):
         self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
         self.criterion = nn.NLLLoss()
 
-    def forward(self, x):
+    def forward(self, x, x_len):
         # (batch size, max len) -> (max len, batch size)
         x = torch.transpose(x, 0, 1)
 
@@ -36,10 +36,15 @@ class FastText(nn.Module):
         embed = embed.permute(1, 0, 2)
 
         # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
-        mean_embed = torch.mean(embed, 1).squeeze(1)
+        # Padded parts are zeros
+        embed = torch.sum(embed, 1).squeeze(1)
 
-        mean_embed = F.relu(mean_embed)
-        hdn = F.relu(self.hidden(mean_embed))
+        batch_size = x.size(1)
+        x_len = x_len.float().unsqueeze(1)
+        x_len = x_len.expand(batch_size, self.config.embedding_dim)
+        embed /= x_len
+        embed = F.relu(embed)
+        hdn = F.relu(self.hidden(embed))
 
         # TODO hierarchical softmax
 
@@ -63,9 +68,9 @@ def train(device, loader, model, epoch, config):
     train_loss = 0.
     example_count = 0
     for batch_idx, ex in enumerate(loader):
-        targets = torch.tensor(ex[1], dtype=torch.int64, device=device)
+        targets = ex[2].to(device)
         model.optimizer.zero_grad()
-        outputs = model(torch.tensor(ex[0], dtype=torch.int64, device=device))
+        outputs = model(ex[0].to(device), ex[1].to(device))
         loss = model.criterion(outputs, targets)
         loss.backward()
         model.optimizer.step()
@@ -95,9 +100,8 @@ def evaluate(device, loader, model, epoch, mode):
     correct = 0
     with torch.no_grad():
         for batch_idx, ex in enumerate(loader):
-            target = torch.tensor(ex[1], dtype=torch.int64, device=device)
-            output = \
-                model(torch.tensor(ex[0], dtype=torch.int64, device=device))
+            target = ex[2].to(device)
+            output = model(ex[0].to(device), ex[1].to(device))
             loss = model.criterion(output, target)
             eval_loss += len(output) * loss.item()
             pred = output.max(1, keepdim=True)[1]

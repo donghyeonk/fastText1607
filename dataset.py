@@ -41,7 +41,7 @@ class AGData(object):
         ngram_set = set()
 
         max_len_real = 0
-        x_lens = list()
+        bon_lens = list()
 
         line_cnt = 0
         errs = 0
@@ -87,7 +87,7 @@ class AGData(object):
                 # stats
                 if max_len_real < bon_len:
                     max_len_real = bon_len
-                x_lens.append(bon_len)
+                bon_lens.append(bon_len)
                 for ng in b_o_ngrams:
                     ngram_set.add(ng)
 
@@ -108,6 +108,7 @@ class AGData(object):
                 x = [self.ngram2idx[ng] if ng in self.ngram2idx
                      else self.ngram2idx['UNK']
                      for ng in b_o_ngrams]
+                x_len = len(x)
 
                 # padding
                 while len(x) < self.max_len:
@@ -117,11 +118,11 @@ class AGData(object):
                 y = category_idx
 
                 if is_test:
-                    test_data.append(x + [y])
+                    test_data.append(x + [x_len] + [y])
                 elif is_valid:
-                    valid_data.append(x + [y])
+                    valid_data.append(x + [x_len] + [y])
                 else:
-                    train_data.append(x + [y])
+                    train_data.append(x + [x_len] + [y])
 
                 if (len(train_data) + len(valid_data) + len(test_data)) \
                         % 10000 == 0:
@@ -134,9 +135,9 @@ class AGData(object):
         print('dictionary size', len(self.ngram2idx))
         print('max_len (setting)', self.max_len)
         print('max_len (real)', max_len_real)
-        print('avg_len {:.1f}'.format(sum(x_lens) / len(x_lens)))
+        print('avg_len {:.1f}'.format(sum(bon_lens) / len(bon_lens)))
         print('max_len coverage {:.3f}'.format(
-              sum([1 for xl in x_lens if xl <= self.max_len]) / len(x_lens)))
+              sum([1 for bl in bon_lens if bl <= self.max_len]) / len(bon_lens)))
 
         return train_data, valid_data, test_data
 
@@ -217,9 +218,15 @@ def get_ngram(words, n=2):
 
 
 def batchify(b):
-    x = [e[:-1] for e in b]
+    x = [e[:-2] for e in b]
+    x_len = [e[-2] for e in b]
     y = [e[-1] for e in b]
-    return x, y
+
+    x = torch.tensor(x, dtype=torch.int64)
+    x_len = torch.tensor(x_len, dtype=torch.int64)
+    y = torch.tensor(y, dtype=torch.int64)
+
+    return x, x_len, y
 
 
 class AGDataset(Dataset):

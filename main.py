@@ -38,7 +38,8 @@ class FastText(nn.Module):
         # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
         pooled = F.avg_pool2d(embed, (embed.shape[1], 1)).squeeze(1)
 
-        hdn = F.relu(self.hidden(pooled))
+        pooled = F.elu(pooled)
+        hdn = F.elu(self.hidden(pooled))
 
         # TODO hierarchical softmax
 
@@ -117,7 +118,6 @@ def save_model(model, args, model_save_path):
     model_dict['state_dict'] = model.state_dict()
     model_dict['m_config'] = args
     model_dict['m_optimizer'] = model.optimizer.state_dict()
-    # now_t = datetime.now().strftime("%Y%m%d_%H%M")[2:]
     if not os.path.exists(args.checkpoint_dir):
         os.makedirs(args.checkpoint_dir)
     torch.save(model_dict, model_save_path)
@@ -136,7 +136,7 @@ def main():
     import pickle
     import pprint
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', type=str, default='fastText1607')
+    parser.add_argument('--name', type=str, default='fastText1607_200')
     parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
     parser.add_argument('--seed', type=int, default=2018)
     parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
@@ -144,9 +144,7 @@ def main():
     parser.add_argument('--num_classes', type=int, default=4)
 
     parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--embedding_dim', type=int, default=50)  #
-    parser.add_argument('--n_train_examples', type=int, default=30000)
-    parser.add_argument('--n_test_examples', type=int, default=1900)
+    parser.add_argument('--embedding_dim', type=int, default=200)  #
 
     parser.add_argument('--lr', type=float, default=5e-1)  #
     parser.add_argument('--wd', type=float, default=0)  #
@@ -165,6 +163,8 @@ def main():
     pprint.PrettyPrinter().pprint(args.__dict__)
     train_loader, valid_loader, test_loader = \
         ag_dataset.get_dataloaders(batch_size=args.batch_size)
+    print(len(train_loader.dataset), len(valid_loader.dataset),
+          len(test_loader.dataset))
 
     ft = FastText(args).to(device)
 

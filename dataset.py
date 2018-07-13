@@ -77,8 +77,6 @@ class AGData(object):
                 description = cols[5]
                 title_desc = title + ' ' + description
 
-                # n_grams_test = list(zip(*[title_desc.split(" ")[i:] for i in range(2)]))
-
                 # create bag-of-ngrams
                 b_o_w = [token.text for token in nlp(title_desc)]
                 ngram = get_ngram(b_o_w, n=self.config.n_gram)
@@ -197,7 +195,6 @@ class AGData(object):
 
         valid_loader = torch.utils.data.DataLoader(
             AGDataset(self.valid_data),
-            shuffle=shuffle,
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=batchify,

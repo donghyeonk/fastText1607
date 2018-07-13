@@ -36,10 +36,10 @@ class FastText(nn.Module):
         embed = embed.permute(1, 0, 2)
 
         # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
-        pooled = F.avg_pool2d(embed, (embed.shape[1], 1)).squeeze(1)
+        mean_embed = torch.mean(embed, 1).squeeze(1)
 
-        pooled = F.elu(pooled)
-        hdn = F.elu(self.hidden(pooled))
+        mean_embed = F.relu(mean_embed)
+        hdn = F.relu(self.hidden(mean_embed))
 
         # TODO hierarchical softmax
 

@@ -28,11 +28,23 @@ class fastText(nn.Module):
         self.criterion = nn.NLLLoss()
 
     def forward(self, x):
+        # (batch size, max len) -> (max len, batch size)
         x = torch.transpose(x, 0, 1)
+
+        # (max len, batch size) -> (max len, batch size, embedding_dim)
         embed = self.bon_embed(x)
+
+        # (max len, batch size, embedding_dim)
+        # -> (batch size, max len, embedding_dim)
         embed = embed.permute(1, 0, 2)
+
+        # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
         pooled = F.avg_pool2d(embed, (embed.shape[1], 1)).squeeze(1)
+
         hdn = F.relu(self.hidden(pooled))
+
+        # TODO hierarchical softmax
+
         return F.log_softmax(self.fc(hdn), dim=1)
 
     def lr_decay(self, epoch):
@@ -124,7 +136,7 @@ def main():
     args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
     print('vocab_size', args_dict['vocab_size'])
 
-    ft = fastText(args)
+    ft = fastText(args).to(device)
     train_loader, test_loader = \
         ag_dataset.get_dataloaders(batch_size=args.batch_size)
 

@@ -12,7 +12,7 @@ class AGData(object):
         self.n_test_examples = config.n_test_examples
         self.num_classes = config.num_classes
         self.top_categories = self.get_top_categories(topn=self.num_classes)
-        # TODO feature hashing
+        # TODO hashing trick
         self.ngram2idx = dict()
         self.idx2ngram = dict()
         self.ngram2idx['PAD'] = 0
@@ -20,7 +20,7 @@ class AGData(object):
         self.ngram2idx['UNK'] = 1
         self.idx2ngram[1] = 'UNK'
 
-        self.max_len = 200
+        self.max_len = 100
 
         self.train_data, self.test_data = self.load()
 
@@ -30,7 +30,10 @@ class AGData(object):
 
         cat_counts = [0] * self.num_classes
 
-        nlp = spacy.load('en_core_web_sm')
+        # https://spacy.io/usage/facts-figures#benchmarks-models-english
+        # Run the following command on terminal
+        # python3 -m spacy download en_core_web_lg
+        nlp = spacy.load('en_core_web_lg', disable=['parser', 'tagger', 'ner'])
 
         ngram_set = set()
 
@@ -43,9 +46,6 @@ class AGData(object):
             lines = f.read().split('\\N')
             for line_idx, line in enumerate(lines):
                 line_cnt += 1
-
-                if line_cnt % 100000 == 0:
-                    print(datetime.now(), line_cnt)
 
                 cols = line.split('\t')
                 if 6 > len(cols):
@@ -74,7 +74,7 @@ class AGData(object):
                     ['<s>'] \
                     + [token.text for token in nlp(title_desc)] \
                     + ['</s>']
-                ngram = get_ngrams(b_o_w, n=self.config.n_grams)
+                ngram = get_ngram(b_o_w, n=self.config.n_gram)
                 b_o_ngrams = b_o_w + ngram
                 for ng in b_o_ngrams:
                     ngram_set.add(ng)
@@ -110,6 +110,10 @@ class AGData(object):
                     train_data.append(x + [y])
                 else:
                     test_data.append(x + [y])
+
+                if (len(train_data) + len(test_data)) % 10000 == 0:
+                    print(datetime.now(), line_cnt,
+                          len(train_data), len(test_data))
 
         print('\nlines', line_cnt)
         print('errs', errs)
@@ -150,7 +154,7 @@ class AGData(object):
             top_categories.append(cat)
         return top_categories
 
-    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4):
+    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=8):
         train_loader = torch.utils.data.DataLoader(
             AGDataset(self.train_data),
             shuffle=shuffle,
@@ -170,7 +174,7 @@ class AGData(object):
         return train_loader, test_loader
 
 
-def get_ngrams(words, n=2):
+def get_ngram(words, n=2):
     return [' '.join(words[i: i+n]) for i in range(len(words)-(n-1))]
 
 
@@ -200,8 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='./data/newsSpace')
     parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
     parser.add_argument('--num_classes', type=int, default=4)
-    parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--n_features', type=int, default=2 ** 12)  # TODO
+    parser.add_argument('--n_gram', type=int, default=2)
     parser.add_argument('--n_train_examples', type=int, default=30000)
     parser.add_argument('--n_test_examples', type=int, default=1900)
     args = parser.parse_args()

@@ -1,66 +1,11 @@
 from datetime import datetime
 import os
 import torch
-from torch import nn, optim
-import torch.nn.functional as F
 from dataset import AGData
+from model import FastText
 
 # Reference
 # https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/3%20-%20Faster%20Sentiment%20Analysis.ipynb
-
-
-class FastText(nn.Module):
-    def __init__(self, config):
-        super(FastText, self).__init__()
-        self.config = config
-
-        self.bon_embed = nn.Embedding(config.vocab_size, config.embedding_dim,
-                                      padding_idx=0)
-        self.hidden = nn.Linear(config.embedding_dim, config.hidden_size)
-        self.fc = nn.Linear(config.hidden_size, config.num_classes)
-
-        self.init_linears()
-
-        self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
-        self.criterion = nn.NLLLoss()
-
-    def forward(self, x, x_len):
-        # (batch size, max len) -> (max len, batch size)
-        x = torch.transpose(x, 0, 1)
-
-        # (max len, batch size) -> (max len, batch size, embedding_dim)
-        embed = self.bon_embed(x)
-
-        # (max len, batch size, embedding_dim)
-        # -> (batch size, max len, embedding_dim)
-        embed = embed.permute(1, 0, 2)
-
-        # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
-        # Padded parts are zeros
-        embed = torch.sum(embed, 1).squeeze(1)
-
-        batch_size = x.size(1)
-        x_len = x_len.float().unsqueeze(1)
-        x_len = x_len.expand(batch_size, self.config.embedding_dim)
-        embed /= x_len
-        embed = F.relu(embed)
-        hdn = F.relu(self.hidden(embed))
-
-        # TODO hierarchical softmax
-
-        return F.log_softmax(self.fc(hdn), dim=1)
-
-    def init_linears(self):
-        nn.init.xavier_uniform_(self.hidden.weight, gain=1)
-        nn.init.uniform_(self.hidden.bias)
-        nn.init.xavier_uniform_(self.fc.weight, gain=1)
-        nn.init.uniform_(self.fc.bias)
-
-    def lr_decay(self, epoch):
-        next_lr = self.config.lr * (1. - epoch / self.config.epochs)
-        print('Next learning rate: {:.3f}'.format(next_lr))
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = next_lr
 
 
 def train(device, loader, model, epoch, config):
@@ -68,16 +13,16 @@ def train(device, loader, model, epoch, config):
     train_loss = 0.
     example_count = 0
     for batch_idx, ex in enumerate(loader):
-        targets = ex[2].to(device)
+        target = ex[2].to(device)
         model.optimizer.zero_grad()
-        outputs = model(ex[0].to(device), ex[1].to(device))
-        loss = model.criterion(outputs, targets)
+        output = model(ex[0].to(device), ex[1].to(device))
+        loss = model.criterion(output, target)
         loss.backward()
         model.optimizer.step()
 
-        batch_loss = len(outputs) * loss.item()
+        batch_loss = len(output) * loss.item()
         train_loss += batch_loss
-        example_count += len(targets)
+        example_count += len(target)
 
         if (batch_idx + 1) % config.log_interval == 0 \
                 or batch_idx == len(loader) - 1:
@@ -86,7 +31,7 @@ def train(device, loader, model, epoch, config):
                 .format(datetime.now(), epoch,
                         example_count, len(loader.dataset),
                         100. * example_count / len(loader.dataset),
-                        batch_loss / len(outputs))
+                        batch_loss / len(output))
             print(_progress)
     train_loss /= len(loader.dataset)
     print('{} Train Epoch {}, Avg. Loss: {:.6f}'.format(datetime.now(), epoch,
@@ -140,7 +85,7 @@ def main():
     import pickle
     import pprint
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', type=str, default='fastText1607_200')
+    parser.add_argument('--name', type=str, default='fastText1607_e10')
     parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
     parser.add_argument('--seed', type=int, default=2018)
     parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
@@ -148,12 +93,12 @@ def main():
     parser.add_argument('--num_classes', type=int, default=4)
 
     parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--embedding_dim', type=int, default=200)  #
+    parser.add_argument('--embedding_dim', type=int, default=10)  #
 
-    parser.add_argument('--lr', type=float, default=5e-1)  #
+    parser.add_argument('--lr', type=float, default=5e-1)
     parser.add_argument('--wd', type=float, default=0)  #
     parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=500)
     parser.add_argument('--log_interval', type=int, default=100)
     args = parser.parse_args()
 
@@ -172,8 +117,9 @@ def main():
 
     ft = FastText(args).to(device)
 
-    best_acc = 0.
     best_loss = float('inf')
+    best_acc = 0.
+    best_epoch = 0
     for epoch in range(1, args.epochs + 1):
         train(device, train_loader, ft, epoch, args)
         valid_loss, valid_acc = \
@@ -181,14 +127,15 @@ def main():
         if valid_loss < best_loss:
             best_loss = valid_loss
             best_acc = valid_acc
+            best_epoch = epoch
             save_model(ft, args, os.path.join(args.checkpoint_dir,
                                               '{}.pth'.format(args.name)))
         else:
             # TODO early stopping
             pass
 
-        print('\tLowest Loss {:.6f}, Acc. {:.2f}%'.format(best_loss,
-                                                          100 * best_acc))
+        print('\tLowest Loss {:.6f}, Acc. {:.2f}%, Epoch {}'.
+              format(best_loss, 100 * best_acc, best_epoch))
 
         # optional
         evaluate(device, test_loader, ft, epoch, 'Test')

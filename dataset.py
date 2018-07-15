@@ -12,7 +12,7 @@ class AGData(object):
         self.n_valid_examples = config.n_valid_examples
         self.n_test_examples = config.n_test_examples
         self.num_classes = config.num_classes
-        self.top_categories = self.get_top_categories(topn=self.num_classes)
+        self.top_categories = self.get_top_categories(top_n=self.num_classes)
         self.max_len = config.max_len
 
         # TODO hashing trick
@@ -37,6 +37,7 @@ class AGData(object):
         # Run the following command on terminal
         # python3 -m spacy download en_core_web_lg
         nlp = spacy.load('en_core_web_lg', disable=['parser', 'tagger', 'ner'])
+        nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
         ngram_set = set()
 
@@ -75,12 +76,21 @@ class AGData(object):
 
                 title = cols[2]
                 description = cols[5]
-                title_desc = title + ' ' + description
+                title_desc = title + '. ' + description
+                title_desc = title_desc.replace('\\', '')
 
                 # create bag-of-ngrams
-                b_o_w = [token.text for token in nlp(title_desc)]
-                ngram = get_ngram(b_o_w, n=self.config.n_gram)
-                b_o_ngrams = b_o_w + ngram
+                doc = nlp(title_desc)
+                b_o_w = [token.text for token in doc]
+
+                # add tags for n-grams
+                tagged_title_desc = \
+                    '<p> ' + ' </s> '.join([s.text for s in doc.sents]) + \
+                    ' </p>'
+                doc = nlp(tagged_title_desc)
+                n_gram = get_ngram([token.text for token in doc],
+                                   n=self.config.n_gram)
+                b_o_ngrams = b_o_w + n_gram
 
                 bon_len = len(b_o_ngrams)
 
@@ -141,7 +151,7 @@ class AGData(object):
 
         return train_data, valid_data, test_data
 
-    def get_top_categories(self, topn=4):
+    def get_top_categories(self, top_n=4):
         category_dict = dict()
 
         with open(self.data_path, 'r', encoding='latin-1') as f:
@@ -160,11 +170,11 @@ class AGData(object):
                 else:
                     category_dict[category] = 1
 
-        print('Top {} categories'.format(topn))
+        print('Top {} categories'.format(top_n))
         top_categories = list()
         for cat in \
                 sorted(category_dict,
-                       key=category_dict.get, reverse=True)[:topn]:
+                       key=category_dict.get, reverse=True)[:top_n]:
             print(cat, category_dict[cat], sep='\t')
             top_categories.append(cat)
         return top_categories
@@ -173,11 +183,10 @@ class AGData(object):
         def count(data):
             count_dict = dict()
             for d in data:
-                cnt = count_dict.get(d[-1])
-                if cnt is None:
+                if d[-1] not in count_dict:
                     count_dict[d[-1]] = 1
                 else:
-                    count_dict[d[-1]] = cnt + 1
+                    count_dict[d[-1]] += 1
             print(count_dict)
 
         count(self.train_data)
@@ -226,6 +235,8 @@ def batchify(b):
     x_len = torch.tensor(x_len, dtype=torch.int64)
     y = torch.tensor(y, dtype=torch.int64)
 
+    # max_len = x_len.max()
+
     return x, x_len, y
 
 
@@ -251,10 +262,10 @@ if __name__ == '__main__':
     parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
     parser.add_argument('--num_classes', type=int, default=4)
     parser.add_argument('--n_gram', type=int, default=2)
-    parser.add_argument('--n_train_examples', type=int, default=27000)
-    parser.add_argument('--n_valid_examples', type=int, default=3000)
+    parser.add_argument('--n_train_examples', type=int, default=28100)
+    parser.add_argument('--n_valid_examples', type=int, default=1900)
     parser.add_argument('--n_test_examples', type=int, default=1900)
-    parser.add_argument('--max_len', type=int, default=200)
+    parser.add_argument('--max_len', type=int, default=200)  #
     args = parser.parse_args()
 
     pprint.PrettyPrinter().pprint(args.__dict__)

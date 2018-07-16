@@ -19,6 +19,7 @@ def train(device, loader, model, epoch, config):
         output = model(ex[0].to(device), ex[1].to(device))
         loss = model.criterion(output, target)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_max_norm)
         model.optimizer.step()
 
         batch_loss = len(output) * loss.item()
@@ -102,6 +103,7 @@ def main():
 
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--wd', type=float, default=0)  #
+    parser.add_argument('--grad_max_norm', type=float, default=5.)  #
     parser.add_argument('--batch_size', type=int, default=256)  #
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -114,6 +116,7 @@ def main():
     torch.manual_seed(args.seed)
     if use_cuda:
         torch.cuda.manual_seed(args.seed)
+        print('*** GPU ***')
 
     with open(args.data_path, 'rb') as f:
         ag_dataset = pickle.load(f)
@@ -157,7 +160,7 @@ def main():
     # load the best
     load_model(ft, os.path.join(args.checkpoint_dir,
                                 '{}.pth'.format(args.name)))
-    evaluate(device, test_loader, ft, args.epochs, 'Test')
+    evaluate(device, test_loader, ft, best_epoch, 'Test')
 
 
 if __name__ == '__main__':

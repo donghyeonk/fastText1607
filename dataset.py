@@ -16,6 +16,7 @@ class AGData(object):
         self.max_len = config.max_len
 
         # TODO hashing trick
+
         self.ngram2idx = dict()
         self.idx2ngram = dict()
         self.ngram2idx['PAD'] = 0
@@ -147,7 +148,8 @@ class AGData(object):
         print('max_len (real)', max_len_real)
         print('avg_len {:.1f}'.format(sum(bon_lens) / len(bon_lens)))
         print('max_len coverage {:.3f}'.format(
-              sum([1 for bl in bon_lens if bl <= self.max_len]) / len(bon_lens)))
+              sum([1 for bl in bon_lens
+                   if bl <= self.max_len]) / len(bon_lens)))
 
         return train_data, valid_data, test_data
 

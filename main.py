@@ -12,6 +12,7 @@ def train(device, loader, model, epoch, config):
     model.train()
     train_loss = 0.
     example_count = 0
+    correct = 0
     for batch_idx, ex in enumerate(loader):
         target = ex[2].to(device)
         model.optimizer.zero_grad()
@@ -24,6 +25,9 @@ def train(device, loader, model, epoch, config):
         train_loss += batch_loss
         example_count += len(target)
 
+        pred = output.max(1, keepdim=True)[1]
+        correct += pred.eq(target.view_as(pred)).sum().item()
+
         if (batch_idx + 1) % config.log_interval == 0 \
                 or batch_idx == len(loader) - 1:
             _progress = \
@@ -34,8 +38,10 @@ def train(device, loader, model, epoch, config):
                         batch_loss / len(output))
             print(_progress)
     train_loss /= len(loader.dataset)
-    print('{} Train Epoch {}, Avg. Loss: {:.6f}'.format(datetime.now(), epoch,
-                                                        train_loss))
+    acc = correct / len(loader.dataset)
+    print('{} Train Epoch {}, Avg. Loss: {:.6f}, Accuracy: {}/{} ({:.2f}%)'.
+          format(datetime.now(), epoch, train_loss,
+                 correct, len(loader.dataset), 100. * acc))
     return train_loss
 
 
@@ -94,15 +100,20 @@ def main():
     parser.add_argument('--n_grams', type=int, default=2)
     parser.add_argument('--embedding_dim', type=int, default=10)  #
 
-    parser.add_argument('--lr', type=float, default=5e-1)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--wd', type=float, default=0)  #
     parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=500)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--log_interval', type=int, default=100)
+    parser.add_argument('--yes_cuda', type=int, default=1)
     args = parser.parse_args()
 
+    use_cuda = args.yes_cuda > 0 and torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+
     torch.manual_seed(args.seed)
-    device = torch.device("cpu")
+    if use_cuda:
+        torch.cuda.manual_seed(args.seed)
 
     with open(args.data_path, 'rb') as f:
         ag_dataset = pickle.load(f)
@@ -120,6 +131,7 @@ def main():
     best_acc = 0.
     best_epoch = 0
     for epoch in range(1, args.epochs + 1):
+        print()
         train(device, train_loader, ft, epoch, args)
         valid_loss, valid_acc = \
             evaluate(device, valid_loader, ft, epoch, 'Valid')
@@ -139,8 +151,8 @@ def main():
         # optional
         evaluate(device, test_loader, ft, epoch, 'Test')
 
-        if epoch < args.epochs:
-            ft.lr_decay(epoch)
+        # if epoch < args.epochs:
+        #     ft.lr_decay(epoch)
 
     # load the best
     load_model(ft, os.path.join(args.checkpoint_dir,

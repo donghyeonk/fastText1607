@@ -10,9 +10,9 @@
             * A line breaker (\N)
 * Execution
 ```
-// create a pickle file: data/ag.pkl
+# Create a pickle file: data/ag.pkl
 $ python3 dataset.py
 
-// run
+# Run
 $ python3 main.py
 ```

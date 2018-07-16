@@ -1,5 +1,6 @@
 import torch
 from torch import nn, optim
+import torch.nn.functional as F
 
 
 class FastText(nn.Module):
@@ -13,7 +14,9 @@ class FastText(nn.Module):
 
         self.init_linears()
 
-        self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
+        # self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=config.lr,
+                                    amsgrad=True)
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x, x_len):
@@ -35,7 +38,7 @@ class FastText(nn.Module):
         x_len = x_len.float().unsqueeze(1)
         x_len = x_len.expand(batch_size, self.config.embedding_dim)
         embed /= x_len
-
+        embed = F.dropout(embed, p=0.5, training=self.training)
         out = self.fc(embed)
 
         # TODO hierarchical softmax

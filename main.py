@@ -77,7 +77,7 @@ def load_model(model, load_path):
     print('\t-> load checkpoint %s' % load_path)
     checkpoint = torch.load(load_path)
     model.load_state_dict(checkpoint['state_dict'])
-    # model.optimizer.load_state_dict(checkpoint['m_optimizer'])
+    model.optimizer.load_state_dict(checkpoint['m_optimizer'])
 
 
 def main():
@@ -85,11 +85,10 @@ def main():
     import pickle
     import pprint
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', type=str, default='fastText1607_e10')
+    parser.add_argument('--name', type=str, default='fastText1607')
     parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
     parser.add_argument('--seed', type=int, default=2018)
     parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
-    parser.add_argument('--hidden_size', type=int, default=10)
     parser.add_argument('--num_classes', type=int, default=4)
 
     parser.add_argument('--n_grams', type=int, default=2)

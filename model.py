@@ -1,6 +1,5 @@
 import torch
 from torch import nn, optim
-import torch.nn.functional as F
 
 
 class FastText(nn.Module):
@@ -10,17 +9,16 @@ class FastText(nn.Module):
 
         self.bon_embed = nn.Embedding(config.vocab_size, config.embedding_dim,
                                       padding_idx=0)
-        self.hidden = nn.Linear(config.embedding_dim, config.hidden_size)
-        self.fc = nn.Linear(config.hidden_size, config.num_classes)
+        self.fc = nn.Linear(config.embedding_dim, config.num_classes)
 
         self.init_linears()
 
         self.optimizer = optim.SGD(self.parameters(), lr=config.lr)
-        self.criterion = nn.NLLLoss()
+        self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x, x_len):
         # (batch size, max len) -> (max len, batch size)
-        x = torch.transpose(x, 0, 1)
+        x.transpose_(0, 1)
 
         # (max len, batch size) -> (max len, batch size, embedding_dim)
         embed = self.bon_embed(x)
@@ -38,19 +36,13 @@ class FastText(nn.Module):
         x_len = x_len.expand(batch_size, self.config.embedding_dim)
         embed /= x_len
 
-        embed = F.elu(embed)
-        embed = F.dropout(embed, training=self.training)
-        hdn = F.elu(self.hidden(embed))
-        hdn = F.dropout(hdn, training=self.training)
-        hdn = self.fc(hdn)
+        out = self.fc(embed)
 
         # TODO hierarchical softmax
 
-        return F.log_softmax(hdn, dim=1)
+        return out
 
     def init_linears(self):
-        nn.init.xavier_uniform_(self.hidden.weight, gain=1)
-        nn.init.uniform_(self.hidden.bias)
         nn.init.xavier_uniform_(self.fc.weight, gain=1)
         nn.init.uniform_(self.fc.bias)
 

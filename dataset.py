@@ -1,4 +1,6 @@
 from datetime import datetime
+import html
+import re
 import spacy
 import torch
 from torch.utils.data import Dataset
@@ -40,22 +42,38 @@ class AGData(object):
         nlp = spacy.load('en_core_web_lg', disable=['parser', 'tagger', 'ner'])
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
+        html_tag_re = re.compile(r'<[^>]+>')
+
         ngram_set = set()
 
         max_len_real = 0
         bon_lens = list()
 
         line_cnt = 0
-        errs = 0
+        row_cnt = 0
+
         with open(self.data_path, 'r', encoding='latin-1') as f:
-            lines = f.read().split('\\N')
-            for line_idx, line in enumerate(lines):
+            real_row = ''
+
+            for line_idx, line in enumerate(f):
                 line_cnt += 1
 
-                cols = line.split('\t')
-                if 6 > len(cols):
-                    errs += 1
+                if '\\\t' in line:
+                    line = line.replace('\\\t', '')
+
+                real_row += line
+
+                if '\\N' not in real_row:
                     continue
+
+                row_cnt += 1
+
+                cols = real_row.split('\t')
+
+                assert 9 == len(cols)
+
+                # reset
+                real_row = ''
 
                 category = cols[4]
                 if category not in self.top_categories:
@@ -75,9 +93,18 @@ class AGData(object):
                     cat_counts[category_idx] > \
                     self.n_train_examples + self.n_valid_examples
 
-                title = cols[2]
-                description = cols[5]
+                # unescape html
+                title = html.unescape(cols[2])
+                description = html.unescape(cols[5])
+
+                # # remove html tags
+                # title = html_tag_re.sub('', title)
+                # description = html_tag_re.sub('', description)
+
+                # concat
                 title_desc = title + '. ' + description
+
+                # remove AG's line marks
                 title_desc = title_desc.replace('\\', '')
 
                 # create bag-of-ngrams
@@ -140,8 +167,8 @@ class AGData(object):
                     print(datetime.now(), line_cnt,
                           len(train_data), len(valid_data), len(test_data))
 
-        print('\nlines', line_cnt)
-        print('errs', errs)
+        print('\nLines', line_cnt)
+        print('Rows', row_cnt)
         print('# of unique ngrams', len(ngram_set))
         print('dictionary size', len(self.ngram2idx))
         print('max_len (setting)', self.max_len)
@@ -156,23 +183,41 @@ class AGData(object):
     def get_top_categories(self, top_n=4):
         category_dict = dict()
 
+        row_cnt = 0
+        col_errs = 0
         with open(self.data_path, 'r', encoding='latin-1') as f:
-            lines = f.read().split('\\N')
-            for line in lines:
-                # line = line.replace('\t\t', '\t')
-                # if '\t\t' in line:
-                #     pass
-                cols = line.split('\t')
-                if 6 > len(cols):
-                    continue
+            real_row = ''
+            for line_idx, line in enumerate(f):
 
-                category = cols[4]
-                if category in category_dict:
-                    category_dict[category] += 1
-                else:
-                    category_dict[category] = 1
+                if '\\\t' in line:
+                    line = line.replace('\\\t', '')
 
-        print('Top {} categories'.format(top_n))
+                real_row += line
+
+                if '\\N' in real_row:
+                    cols = real_row.split('\t')
+                    if 9 == len(cols):
+                        row_cnt += 1
+
+                        category = cols[4]
+                        if category in category_dict:
+                            category_dict[category] += 1
+                        else:
+                            category_dict[category] = 1
+                    else:
+                        col_errs += 1
+
+                    # reset
+                    real_row = ''
+
+                # if (line_idx+1) % 100000 == 0:
+                #     print(line_idx+1, row_cnt, col_errs)
+
+        print('row_cnt', row_cnt)
+        if col_errs > 0:
+            print('col_errs', col_errs)
+
+        print('\nTop {} categories'.format(top_n))
         top_categories = list()
         for cat in \
                 sorted(category_dict,
@@ -195,7 +240,7 @@ class AGData(object):
         count(self.valid_data)
         count(self.test_data)
 
-    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=8):
+    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4):
         train_loader = torch.utils.data.DataLoader(
             AGDataset(self.train_data),
             shuffle=shuffle,
@@ -272,13 +317,13 @@ if __name__ == '__main__':
 
     pprint.PrettyPrinter().pprint(args.__dict__)
 
-    if os.path.exists(args.pickle_path):
-        with open(args.pickle_path, 'rb') as f_pkl:
-            agdata = pickle.load(f_pkl)
-    else:
-        agdata = AGData(args)
-        with open(args.pickle_path, 'wb') as f_pkl:
-            pickle.dump(agdata, f_pkl)
+    # if os.path.exists(args.pickle_path):
+    #     with open(args.pickle_path, 'rb') as f_pkl:
+    #         agdata = pickle.load(f_pkl)
+    # else:
+    agdata = AGData(args)
+    with open(args.pickle_path, 'wb') as f_pkl:
+        pickle.dump(agdata, f_pkl)
 
     tr_loader, _, _ = agdata.get_dataloaders(batch_size=24, num_workers=8)
     print(len(tr_loader.dataset))

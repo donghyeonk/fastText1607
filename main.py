@@ -19,7 +19,8 @@ def train(device, loader, model, epoch, config):
         output = model(ex[0].to(device), ex[1].to(device))
         loss = model.criterion(output, target)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_max_norm)
+        torch.nn.utils.clip_grad_norm_(model.parameters(),
+                                       config.grad_max_norm)
         model.optimizer.step()
 
         batch_loss = len(output) * loss.item()
@@ -99,13 +100,16 @@ def main():
     parser.add_argument('--num_classes', type=int, default=4)
 
     parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--embedding_dim', type=int, default=10)  #
+    parser.add_argument('--embedding_dim', type=int, default=10)
 
     parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--momentum', type=float, default=9e-1)  # SGD
     parser.add_argument('--wd', type=float, default=0)  #
+    parser.add_argument('--factor', type=float, default=0.5)  # lr_scheduler
+    parser.add_argument('--patience', type=float, default=5)  # lr_scheduler
     parser.add_argument('--grad_max_norm', type=float, default=5.)  #
     parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=5*4)
     parser.add_argument('--log_interval', type=int, default=100)
     parser.add_argument('--yes_cuda', type=int, default=1)
     args = parser.parse_args()
@@ -116,7 +120,8 @@ def main():
     torch.manual_seed(args.seed)
     if use_cuda:
         torch.cuda.manual_seed(args.seed)
-        print('*** GPU ***')
+    print('CUDA device_count {0}'.format(torch.cuda.device_count())
+          if use_cuda else 'CPU')
 
     with open(args.data_path, 'rb') as f:
         ag_dataset = pickle.load(f)
@@ -148,8 +153,10 @@ def main():
             # TODO early stopping
             pass
 
-        print('\tLowest Loss {:.6f}, Acc. {:.2f}%, Epoch {}'.
+        print('\tLowest Valid Loss {:.6f}, Acc. {:.2f}%, Epoch {}'.
               format(best_loss, 100 * best_acc, best_epoch))
+
+        # ft.scheduler.step(valid_loss)
 
         # optional
         evaluate(device, test_loader, ft, epoch, 'Test')

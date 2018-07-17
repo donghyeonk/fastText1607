@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import nn, optim
 
 
@@ -13,7 +14,8 @@ class FastText(nn.Module):
 
         self.init_linears()
 
-        self.bn = nn.BatchNorm1d(config.embedding_dim)
+        if config.use_bn > 0:
+            self.bn = nn.BatchNorm1d(config.embedding_dim)
 
         # self.optimizer = \
         #     optim.SGD(self.parameters(), lr=config.lr,
@@ -46,7 +48,13 @@ class FastText(nn.Module):
         x_len = x_len.float().unsqueeze(1)
         x_len = x_len.expand(batch_size, self.config.embedding_dim)
         embed /= x_len
-        embed = self.bn(embed)
+
+        if self.config.use_dropout > 0:
+            embed = F.dropout(embed, p=0.5, training=self.training)
+
+        if self.config.use_bn > 0:
+            embed = self.bn(embed)
+
         out = self.fc(embed)
 
         # TODO hierarchical softmax

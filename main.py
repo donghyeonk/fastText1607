@@ -4,9 +4,6 @@ import torch
 from dataset import AGData
 from model import FastText
 
-# Reference
-# https://github.com/bentrevett/pytorch-sentiment-analysis/blob/master/3%20-%20Faster%20Sentiment%20Analysis.ipynb
-
 
 def train(device, loader, model, epoch, config):
     model.train()
@@ -19,8 +16,7 @@ def train(device, loader, model, epoch, config):
         output = model(ex[0].to(device), ex[1].to(device))
         loss = model.criterion(output, target)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(),
-                                       config.grad_max_norm)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_max_norm)
         model.optimizer.step()
 
         batch_loss = len(output) * loss.item()
@@ -41,7 +37,7 @@ def train(device, loader, model, epoch, config):
             print(_progress)
     train_loss /= len(loader.dataset)
     acc = correct / len(loader.dataset)
-    print('{} Train Epoch {}, Avg. Loss: {:.6f}, Accuracy: {}/{} ({:.2f}%)'.
+    print('{} Train Epoch {}, Avg. Loss: {:.6f}, Accuracy: {}/{} ({:.1f}%)'.
           format(datetime.now(), epoch, train_loss,
                  correct, len(loader.dataset), 100. * acc))
     return train_loss
@@ -62,7 +58,7 @@ def evaluate(device, loader, model, epoch, mode):
     eval_loss /= len(loader.dataset)
     acc = correct / len(loader.dataset)
     print('{} {} Epoch {}, Avg. Loss: {:.6f}, '
-          'Accuracy: {}/{} ({:.2f}%)'.format(datetime.now(), mode, epoch,
+          'Accuracy: {}/{} ({:.1f}%)'.format(datetime.now(), mode, epoch,
                                              eval_loss,
                                              correct, len(loader.dataset),
                                              100. * acc))
@@ -108,8 +104,10 @@ def main():
     parser.add_argument('--factor', type=float, default=0.5)  # lr_scheduler
     parser.add_argument('--patience', type=float, default=5)  # lr_scheduler
     parser.add_argument('--grad_max_norm', type=float, default=5.)  #
+    parser.add_argument('--use_bn', type=int, default=0)  # bad..
+    parser.add_argument('--use_dropout', type=int, default=1)  # good~
     parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=5*4)
+    parser.add_argument('--epochs', type=int, default=5 * 10)
     parser.add_argument('--log_interval', type=int, default=100)
     parser.add_argument('--yes_cuda', type=int, default=1)
     args = parser.parse_args()
@@ -141,6 +139,8 @@ def main():
     for epoch in range(1, args.epochs + 1):
         print()
         train(device, train_loader, ft, epoch, args)
+
+        # valid
         valid_loss, valid_acc = \
             evaluate(device, valid_loader, ft, epoch, 'Valid')
         if valid_loss < best_loss:
@@ -153,9 +153,8 @@ def main():
             # TODO early stopping
             pass
 
-        print('\tLowest Valid Loss {:.6f}, Acc. {:.2f}%, Epoch {}'.
+        print('\tLowest Valid Loss {:.6f}, Acc. {:.1f}%, Epoch {}'.
               format(best_loss, 100 * best_acc, best_epoch))
-
         # ft.scheduler.step(valid_loss)
 
         # optional

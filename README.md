@@ -22,12 +22,11 @@ $ python3 main.py
 | Model                  | Dataset | Accuracy (%) |
 |:----------------------:|:-------:|:------------:|
 | fastText, h=10, bigram | AG      | 92.5         |
-| This repo.             | AG      | 90.0         |
+| This repo.             | AG      | 91.2         |
 
 * Diff. from the paper
     * Embedding instead of multi-hot
     * Adam optimizer instead of SGD
-    
 * Reference
     * https://github.com/poliglot/fasttext
     * https://github.com/bentrevett/pytorch-sentiment-analysis

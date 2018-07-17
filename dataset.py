@@ -1,6 +1,6 @@
 import csv
 import html
-# import re
+import re
 import spacy
 import torch
 from torch.utils.data import Dataset
@@ -21,6 +21,7 @@ class AGData(object):
         self.ngram2idx['UNK'] = 1
         self.idx2ngram[1] = 'UNK'
 
+        self.html_tag_re = re.compile(r'<[^>]+>')
         self.train_data, self.test_data = self.load_csv()
         self.count_labels()
 
@@ -71,9 +72,8 @@ class AGData(object):
         # unescape html
         title_desc = html.unescape(title_desc)
 
-        # # remove html tags
-        # title = html_tag_re.sub('', title)
-        # description = html_tag_re.sub('', description)
+        # remove html tags
+        title_desc = self.html_tag_re.sub('', title_desc)
 
         # create bag-of-ngrams
         doc = nlp(title_desc)

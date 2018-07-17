@@ -69,6 +69,9 @@ class AGData(object):
         # concat
         title_desc = title + '. ' + description
 
+        if '\\' in title_desc:
+            title_desc = title_desc.replace('\\', ' ')
+
         # unescape html
         title_desc = html.unescape(title_desc)
 

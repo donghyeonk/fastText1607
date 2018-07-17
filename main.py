@@ -102,7 +102,7 @@ def main():
     parser.add_argument('--momentum', type=float, default=9e-1)  # SGD
     parser.add_argument('--wd', type=float, default=0)  #
     parser.add_argument('--factor', type=float, default=0.5)  # lr_scheduler
-    parser.add_argument('--patience', type=float, default=5)  # lr_scheduler
+    parser.add_argument('--patience', type=float, default=2)  # lr_scheduler
     parser.add_argument('--grad_max_norm', type=float, default=5.)  #
     parser.add_argument('--use_bn', type=int, default=0)  # bad..
     parser.add_argument('--use_dropout', type=int, default=1)  # good~
@@ -155,7 +155,7 @@ def main():
 
         print('\tLowest Valid Loss {:.6f}, Acc. {:.1f}%, Epoch {}'.
               format(best_loss, 100 * best_acc, best_epoch))
-        # ft.scheduler.step(valid_loss)
+        ft.scheduler.step(valid_loss)
 
         # optional
         evaluate(device, test_loader, ft, epoch, 'Test')

@@ -24,10 +24,10 @@ class FastText(nn.Module):
             optim.Adam(self.parameters(), lr=config.lr, amsgrad=True)
         self.criterion = nn.CrossEntropyLoss()
 
-        # self.scheduler = \
-        #     optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-        #                                          factor=config.factor,
-        #                                          patience=config.patience)
+        self.scheduler = \
+            optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                 factor=config.factor,
+                                                 patience=config.patience)
 
     def forward(self, x, x_len):
         # (batch size, max len) -> (max len, batch size)

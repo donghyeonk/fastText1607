@@ -76,13 +76,14 @@ class AGData(object):
         title_desc = html.unescape(title_desc)
 
         # remove html tags
-        title_desc = self.html_tag_re.sub('', title_desc)
+        if '<' in title_desc and '>' in title_desc:
+            title_desc = self.html_tag_re.sub('', title_desc)
 
-        # create bag-of-ngrams
+        # create bow and bag-of-ngrams
         doc = nlp(title_desc)
         b_o_w = [token.text for token in doc]
 
-        # add tags for n-grams
+        # add tags for ngrams
         tagged_title_desc = \
             '<p> ' + ' </s> '.join([s.text for s in doc.sents]) + \
             ' </p>'

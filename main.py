@@ -107,7 +107,7 @@ def main():
     parser.add_argument('--use_bn', type=int, default=0)  # bad..
     parser.add_argument('--use_dropout', type=int, default=1)  # good~
     parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=5 * 6)
+    parser.add_argument('--epochs', type=int, default=5 * 10)
     parser.add_argument('--log_interval', type=int, default=100)
     parser.add_argument('--yes_cuda', type=int, default=1)
     args = parser.parse_args()

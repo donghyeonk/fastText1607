@@ -12,6 +12,8 @@ class AGData(object):
         self.config = config
         self.num_classes = config.num_classes
         self.max_len = config.max_len
+        self.n_over_max_len = 0
+        self.real_max_len = 0
 
         np.random.seed(config.seed)
 
@@ -27,8 +29,13 @@ class AGData(object):
         self.html_tag_re = re.compile(r'<[^>]+>')
         self.train_data, self.test_data = self.load_csv()
         self.train_data, self.valid_data = \
-            self.divide_tr_va(n_class_examples=config.valid_size_per_class)
+            self.split_tr_va(n_class_examples=config.valid_size_per_class)
         self.count_labels()
+
+        print('real_max_len', self.real_max_len)
+        print('n_over_max_len {}/{} ({:.1f}%)'.
+              format(self.n_over_max_len, len(self.train_data),
+                     100 * self.n_over_max_len / len(self.train_data)))
 
     def load_csv(self):
         train_data = list()
@@ -48,7 +55,8 @@ class AGData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
                 x, x_len = self.process_example(features[1], features[2], nlp,
-                                                is_train=True)
+                                                is_train=True,
+                                                padding=args.padding)
                 train_data.append([x, x_len, y])
 
                 if (idx + 1) % 10000 == 0:
@@ -62,7 +70,8 @@ class AGData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
                 x, x_len = self.process_example(features[1], features[2], nlp,
-                                                is_train=False)
+                                                is_train=False,
+                                                padding=args.padding)
                 test_data.append([x, x_len, y])
 
         print('dictionary size', len(self.ngram2idx))
@@ -70,7 +79,7 @@ class AGData(object):
         return train_data, test_data
 
     def process_example(self, title, description, nlp, is_train=True,
-                        padding=True):
+                        padding=0):
         # concat
         title_desc = title + '. ' + description
 
@@ -98,7 +107,7 @@ class AGData(object):
         b_o_ngrams = b_o_w + n_gram
 
         # limit max len
-        if padding:
+        if padding > 0:
             if self.max_len < len(b_o_ngrams):
                 b_o_ngrams = b_o_ngrams[:self.max_len]
 
@@ -118,8 +127,14 @@ class AGData(object):
 
         x_len = len(x)
 
+        if x_len > self.max_len:
+            self.n_over_max_len += 1
+
+        if x_len > self.real_max_len:
+            self.real_max_len = x_len
+
         # padding
-        if padding:
+        if padding > 0:
             while len(x) < self.max_len:
                 x.append(self.ngram2idx['PAD'])
             assert len(x) == self.max_len
@@ -168,11 +183,12 @@ class AGData(object):
         )
         return train_loader, valid_loader, test_loader
 
-    def divide_tr_va(self, n_class_examples=1900):
+    def split_tr_va(self, n_class_examples=1900):
         count = 0
         class_item_set_dict = dict()
         item_all = list()
 
+        print('Splitting..')
         while count < n_class_examples * self.config.num_classes:
             rand_pick = np.random.randint(len(self.train_data))
             # print(rand_pick)
@@ -244,7 +260,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_classes', type=int, default=4)
     parser.add_argument('--valid_size_per_class', type=int, default=1900)
     parser.add_argument('--n_gram', type=int, default=2)
-    parser.add_argument('--max_len', type=int, default=200)  #
+    parser.add_argument('--padding', type=int, default=1)
+    parser.add_argument('--max_len', type=int, default=467)  #
     args = parser.parse_args()
 
     pprint.PrettyPrinter().pprint(args.__dict__)

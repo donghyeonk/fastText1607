@@ -19,10 +19,10 @@ $ python3 main.py
     
 * Performance
 
-| Model                                | Dataset | Accuracy (%) | Training time for a epoch (CPU) |
-|:------------------------------------:|:-------:|:------------:|:-------------------------------:|
-| The original: fastText, h=10, bigram | AG      | 92.5         | 1s                              |
-| This repo's model                    | AG      | 91.3         |                                 |
+| Model                                | Dataset | Accuracy (%) | Training time for an epoch (CPU) |
+|:------------------------------------:|:-------:|:------------:|:--------------------------------:|
+| The original: fastText, h=10, bigram | AG      | 92.5         | 1 s                              |
+| This repo's model                    | AG      | 91.3         | 28 s                             |
 
 
 * Embeddings are used instead of binary encoding (=multi-hot)

@@ -53,8 +53,9 @@ class FastText(nn.Module):
         nn.init.xavier_uniform_(self.fc.weight, gain=1)
         nn.init.uniform_(self.fc.bias)
 
-    def lr_decay(self, epoch):
-        next_lr = self.config.lr * (1. - epoch / self.config.epochs)
-        print('Next learning rate: {:.3f}'.format(next_lr))
-        for param_group in self.optimizer.param_groups:
+    def lr_decay(self, epoch, optimizer):
+        # https://calculus.subwiki.org/wiki/Gradient_descent_with_decaying_learning_rate
+        next_lr = self.config.lr / (1. + epoch)
+        print('Next learning rate: {:.6f}'.format(next_lr))
+        for param_group in optimizer.param_groups:
             param_group['lr'] = next_lr

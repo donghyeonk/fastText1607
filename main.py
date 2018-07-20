@@ -30,8 +30,8 @@ parser.add_argument('--use_bn', type=int, default=0)
 parser.add_argument('--use_dropout', type=int, default=1)
 
 parser.add_argument('--batch_size', type=int, default=256 * 4)  #
-parser.add_argument('--epochs', type=int, default=5 * 16)
-parser.add_argument('--log_interval', type=int, default=100)
+parser.add_argument('--epochs', type=int, default=5 * 16)  #
+parser.add_argument('--log_interval', type=int, default=50)
 parser.add_argument('--yes_cuda', type=int, default=1)
 parser.add_argument('--num_processes', type=int, default=2)
 parser.add_argument('--num_workers', type=int, default=2)
@@ -200,8 +200,9 @@ def main():
     model = FastText(args).to(device)
 
     # optimizer = optim.SGD(model.parameters(), lr=args.lr,
-    #                       momentum=args.momentum)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, amsgrad=True)
+    #                       weight_decay=args.wd, momentum=args.momentum)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr,
+                           weight_decay=args.wd, amsgrad=True)
 
     best_loss = float('inf')
     best_acc = 0.
@@ -231,7 +232,7 @@ def main():
         evaluate_epoch(device, test_loader, model, epoch, 'Test')
 
         # if epoch < args.epochs:
-        #     model.lr_decay(epoch)
+        #     model.lr_decay(epoch, optimizer)
 
     # load the best
     load_model(model, optimizer, os.path.join(args.checkpoint_dir,

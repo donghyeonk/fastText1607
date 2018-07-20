@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from torch import nn, optim
+from torch import nn
 
 
 class FastText(nn.Module):
@@ -16,18 +16,6 @@ class FastText(nn.Module):
 
         if config.use_bn > 0:
             self.bn = nn.BatchNorm1d(config.embedding_dim)
-
-        # self.optimizer = \
-        #     optim.SGD(self.parameters(), lr=config.lr,
-        #               momentum=config.momentum)
-        self.optimizer = \
-            optim.Adam(self.parameters(), lr=config.lr, amsgrad=True)
-        self.criterion = nn.CrossEntropyLoss()
-
-        self.scheduler = \
-            optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-                                                 factor=config.factor,
-                                                 patience=config.patience)
 
     def forward(self, x, x_len):
         # (batch size, max len) -> (max len, batch size)
@@ -59,7 +47,7 @@ class FastText(nn.Module):
 
         # TODO hierarchical softmax
 
-        return out
+        return F.log_softmax(out, dim=1)
 
     def init_linears(self):
         nn.init.xavier_uniform_(self.fc.weight, gain=1)

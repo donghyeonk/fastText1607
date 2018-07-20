@@ -1,23 +1,59 @@
+import argparse
 from datetime import datetime
 import os
+import pickle
+import pprint
 import torch
+import torch.multiprocessing as mp
+import torch.nn.functional as F
+import torch.optim as optim
 from dataset import AGData
 from model import FastText
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--name', type=str, default='fastText1607')
+parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
+parser.add_argument('--seed', type=int, default=2018)
+parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
+parser.add_argument('--num_classes', type=int, default=4)
 
-def train(device, loader, model, epoch, config):
+parser.add_argument('--n_grams', type=int, default=2)
+parser.add_argument('--embedding_dim', type=int, default=10)
+parser.add_argument('--vocab_size', type=int, default=1377891)
+
+parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--momentum', type=float, default=5e-1)  # SGD
+parser.add_argument('--wd', type=float, default=0)  #
+
+parser.add_argument('--grad_max_norm', type=float, default=0)
+parser.add_argument('--use_bn', type=int, default=0)
+parser.add_argument('--use_dropout', type=int, default=1)
+
+parser.add_argument('--batch_size', type=int, default=256 * 4)  #
+parser.add_argument('--epochs', type=int, default=5 * 16)
+parser.add_argument('--log_interval', type=int, default=100)
+parser.add_argument('--yes_cuda', type=int, default=1)
+parser.add_argument('--num_processes', type=int, default=2)
+parser.add_argument('--num_workers', type=int, default=2)
+
+
+def train_epoch(device, loader, model, epoch, optimizer, config):
     model.train()
+    pid = os.getpid()
     train_loss = 0.
     example_count = 0
     correct = 0
+    start_t = datetime.now()
     for batch_idx, ex in enumerate(loader):
         target = ex[2].to(device)
-        model.optimizer.zero_grad()
+        optimizer.zero_grad()
         output = model(ex[0].to(device), ex[1].to(device))
-        loss = model.criterion(output, target)
+        loss = F.nll_loss(output, target)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_max_norm)
-        model.optimizer.step()
+        if config.grad_max_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(),
+                                           config.grad_max_norm)
+        optimizer.step()
 
         batch_loss = len(output) * loss.item()
         train_loss += batch_loss
@@ -29,8 +65,8 @@ def train(device, loader, model, epoch, config):
         if (batch_idx + 1) % config.log_interval == 0 \
                 or batch_idx == len(loader) - 1:
             _progress = \
-                '\r{} Train Epoch {}, [{}/{} ({:.1f}%)],\tBatch Loss: {:.6f}' \
-                .format(datetime.now(), epoch,
+                '{} {} Train Epoch {}, [{}/{} ({:.1f}%)],\tBatch Loss: {:.6f}' \
+                .format(pid, datetime.now(), epoch,
                         example_count, len(loader.dataset),
                         100. * example_count / len(loader.dataset),
                         batch_loss / len(output))
@@ -38,78 +74,108 @@ def train(device, loader, model, epoch, config):
     train_loss /= len(loader.dataset)
     acc = correct / len(loader.dataset)
     print('{} Train Epoch {}, Avg. Loss: {:.6f}, Accuracy: {}/{} ({:.1f}%)'.
-          format(datetime.now(), epoch, train_loss,
+          format(datetime.now()-start_t, epoch, train_loss,
                  correct, len(loader.dataset), 100. * acc))
     return train_loss
 
 
-def evaluate(device, loader, model, epoch, mode):
+def evaluate_epoch(device, loader, model, epoch, mode):
     model.eval()
     eval_loss = 0.
     correct = 0
+    start_t = datetime.now()
     with torch.no_grad():
         for batch_idx, ex in enumerate(loader):
             target = ex[2].to(device)
             output = model(ex[0].to(device), ex[1].to(device))
-            loss = model.criterion(output, target)
+            loss = F.nll_loss(output, target)
             eval_loss += len(output) * loss.item()
             pred = output.max(1, keepdim=True)[1]
             correct += pred.eq(target.view_as(pred)).sum().item()
     eval_loss /= len(loader.dataset)
     acc = correct / len(loader.dataset)
     print('{} {} Epoch {}, Avg. Loss: {:.6f}, '
-          'Accuracy: {}/{} ({:.1f}%)'.format(datetime.now(), mode, epoch,
-                                             eval_loss,
+          'Accuracy: {}/{} ({:.1f}%)'.format(datetime.now()-start_t, mode,
+                                             epoch, eval_loss,
                                              correct, len(loader.dataset),
                                              100. * acc))
     return eval_loss, acc
 
 
-def save_model(model, args, model_save_path):
+def save_model(model, optimizer, args, model_save_path):
     # save a model and args
     model_dict = dict()
     model_dict['state_dict'] = model.state_dict()
     model_dict['m_config'] = args
-    model_dict['m_optimizer'] = model.optimizer.state_dict()
+    model_dict['optimizer'] = optimizer.state_dict()
     if not os.path.exists(args.checkpoint_dir):
         os.makedirs(args.checkpoint_dir)
     torch.save(model_dict, model_save_path)
     print('Saved', model_save_path)
 
 
-def load_model(model, load_path):
+def load_model(model, optimizer, load_path):
     print('\t-> load checkpoint %s' % load_path)
     checkpoint = torch.load(load_path)
     model.load_state_dict(checkpoint['state_dict'])
-    model.optimizer.load_state_dict(checkpoint['m_optimizer'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+
+
+# https://github.com/pytorch/examples/tree/master/mnist_hogwild
+def train(rank, device, model, args):
+    torch.manual_seed(args.seed + rank)
+
+    with open(args.data_path, 'rb') as f:
+        ag_dataset = pickle.load(f)
+    assert len(ag_dataset.ngram2idx) == args.vocab_size, \
+        len(ag_dataset.ngram2idx)
+    args_dict = vars(args)
+    args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
+    train_loader, valid_loader, test_loader = \
+        ag_dataset.get_dataloaders(batch_size=args.batch_size,
+                                   num_workers=args.num_workers)
+    print(len(train_loader.dataset), len(valid_loader.dataset),
+          len(test_loader.dataset))
+
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr,
+    #                       momentum=args.momentum)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, amsgrad=True)
+    for epoch in range(1, args.epochs + 1):
+        train_epoch(device, train_loader, model, epoch, optimizer, args)
+        evaluate_epoch(device, valid_loader, model, epoch, 'Valid')
+        evaluate_epoch(device, test_loader, model, epoch, 'Test')
+
+
+def hog_wild():
+    args = parser.parse_args()
+
+    assert args.yes_cuda == 0
+
+    pprint.PrettyPrinter().pprint(args.__dict__)
+
+    use_cuda = args.yes_cuda > 0 and torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+
+    torch.manual_seed(args.seed)
+    if use_cuda:
+        torch.cuda.manual_seed(args.seed)
+    print('CUDA device_count {0}'.format(torch.cuda.device_count())
+          if use_cuda else 'CPU')
+    print(torch.get_num_threads())
+
+    model = FastText(args).to(device)
+    model.share_memory()
+
+    processes = []
+    for rank in range(args.num_processes):
+        p = mp.Process(target=train, args=(rank, device, model, args))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
 
 
 def main():
-    import argparse
-    import pickle
-    import pprint
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--name', type=str, default='fastText1607')
-    parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
-    parser.add_argument('--seed', type=int, default=2018)
-    parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
-    parser.add_argument('--num_classes', type=int, default=4)
-
-    parser.add_argument('--n_grams', type=int, default=2)
-    parser.add_argument('--embedding_dim', type=int, default=10)
-
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--momentum', type=float, default=9e-1)  # SGD
-    parser.add_argument('--wd', type=float, default=0)  #
-    parser.add_argument('--factor', type=float, default=0.5)  # lr_scheduler
-    parser.add_argument('--patience', type=float, default=2)  # lr_scheduler
-    parser.add_argument('--grad_max_norm', type=float, default=5.)  #
-    parser.add_argument('--use_bn', type=int, default=0)  # bad..
-    parser.add_argument('--use_dropout', type=int, default=1)  # good~
-    parser.add_argument('--batch_size', type=int, default=256)  #
-    parser.add_argument('--epochs', type=int, default=5 * 10)
-    parser.add_argument('--log_interval', type=int, default=100)
-    parser.add_argument('--yes_cuda', type=int, default=1)
     args = parser.parse_args()
 
     use_cuda = args.yes_cuda > 0 and torch.cuda.is_available()
@@ -131,43 +197,48 @@ def main():
     print(len(train_loader.dataset), len(valid_loader.dataset),
           len(test_loader.dataset))
 
-    ft = FastText(args).to(device)
+    model = FastText(args).to(device)
+
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr,
+    #                       momentum=args.momentum)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, amsgrad=True)
 
     best_loss = float('inf')
     best_acc = 0.
     best_epoch = 0
     for epoch in range(1, args.epochs + 1):
         print()
-        train(device, train_loader, ft, epoch, args)
+        train_epoch(device, train_loader, model, epoch, optimizer, args)
 
         # valid
         valid_loss, valid_acc = \
-            evaluate(device, valid_loader, ft, epoch, 'Valid')
+            evaluate_epoch(device, valid_loader, model, epoch, 'Valid')
         if valid_loss < best_loss:
             best_loss = valid_loss
             best_acc = valid_acc
             best_epoch = epoch
-            save_model(ft, args, os.path.join(args.checkpoint_dir,
-                                              '{}.pth'.format(args.name)))
+            save_model(model, optimizer, args,
+                       os.path.join(args.checkpoint_dir,
+                                    '{}.pth'.format(args.name)))
         else:
             # TODO early stopping
             pass
 
         print('\tLowest Valid Loss {:.6f}, Acc. {:.1f}%, Epoch {}'.
               format(best_loss, 100 * best_acc, best_epoch))
-        ft.scheduler.step(valid_loss)
 
         # optional
-        evaluate(device, test_loader, ft, epoch, 'Test')
+        evaluate_epoch(device, test_loader, model, epoch, 'Test')
 
         # if epoch < args.epochs:
-        #     ft.lr_decay(epoch)
+        #     model.lr_decay(epoch)
 
     # load the best
-    load_model(ft, os.path.join(args.checkpoint_dir,
-                                '{}.pth'.format(args.name)))
-    evaluate(device, test_loader, ft, best_epoch, 'Test')
+    load_model(model, optimizer, os.path.join(args.checkpoint_dir,
+                                              '{}.pth'.format(args.name)))
+    evaluate_epoch(device, test_loader, model, best_epoch, 'Test')
 
 
 if __name__ == '__main__':
     main()
+    # hog_wild()

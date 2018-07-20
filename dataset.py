@@ -1,5 +1,6 @@
 import csv
 import html
+import numpy as np
 import re
 import spacy
 import torch
@@ -12,6 +13,8 @@ class AGData(object):
         self.num_classes = config.num_classes
         self.max_len = config.max_len
 
+        np.random.seed(config.seed)
+
         # TODO hashing trick
 
         self.ngram2idx = dict()
@@ -23,6 +26,8 @@ class AGData(object):
 
         self.html_tag_re = re.compile(r'<[^>]+>')
         self.train_data, self.test_data = self.load_csv()
+        self.train_data, self.valid_data = \
+            self.divide_tr_va(n_class_examples=config.valid_size_per_class)
         self.count_labels()
 
     def load_csv(self):
@@ -132,13 +137,13 @@ class AGData(object):
 
             return count_dict
 
-        print('train', count(self.train_data[:self.config.train_data_size]))
-        print('valid', count(self.train_data[self.config.train_data_size:]))
+        print('train', count(self.train_data))
+        print('valid', count(self.valid_data))
         print('test ', count(self.test_data))
 
     def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4):
         train_loader = torch.utils.data.DataLoader(
-            AGDataset(self.train_data[:self.config.train_data_size]),
+            AGDataset(self.train_data),
             shuffle=shuffle,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -147,7 +152,7 @@ class AGData(object):
         )
 
         valid_loader = torch.utils.data.DataLoader(
-            AGDataset(self.train_data[self.config.train_data_size:]),
+            AGDataset(self.valid_data),
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=batchify,
@@ -162,6 +167,39 @@ class AGData(object):
             pin_memory=True
         )
         return train_loader, valid_loader, test_loader
+
+    def divide_tr_va(self, n_class_examples=1900):
+        count = 0
+        class_item_set_dict = dict()
+        item_all = list()
+
+        while count < n_class_examples * self.config.num_classes:
+            rand_pick = np.random.randint(len(self.train_data))
+            # print(rand_pick)
+            label = self.train_data[rand_pick][-1]
+            if label in class_item_set_dict:
+                item_set = class_item_set_dict[label]
+                if len(item_set) < n_class_examples \
+                        and rand_pick not in item_set:
+                    item_set.add(rand_pick)
+                    item_all.append(rand_pick)
+                    count += 1
+            else:
+                class_item_set_dict[label] = set()
+                class_item_set_dict[label].add(rand_pick)
+                item_all.append(rand_pick)
+                count += 1
+
+        train_data2 = list()
+        valid_data = list()
+        for idx, td in enumerate(self.train_data):
+            if idx in item_all:
+                valid_data.append(td)
+            else:
+                train_data2.append(td)
+
+        print(len(train_data2), len(valid_data))
+        return train_data2, valid_data
 
 
 def get_ngram(words, n=2):
@@ -202,8 +240,9 @@ if __name__ == '__main__':
     parser.add_argument('--test_data_path', type=str,
                         default='./data/test.csv')
     parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
+    parser.add_argument('--seed', type=int, default=2018)
     parser.add_argument('--num_classes', type=int, default=4)
-    parser.add_argument('--train_data_size', type=int, default=112400)
+    parser.add_argument('--valid_size_per_class', type=int, default=1900)
     parser.add_argument('--n_gram', type=int, default=2)
     parser.add_argument('--max_len', type=int, default=200)  #
     args = parser.parse_args()
@@ -219,8 +258,8 @@ if __name__ == '__main__':
     with open(args.pickle_path, 'wb') as f_pkl:
         pickle.dump(agdata, f_pkl)
 
-    tr_loader, _, _ = agdata.get_dataloaders(batch_size=32, num_workers=8)
+    tr_loader, _, _ = agdata.get_dataloaders(batch_size=256, num_workers=4)
     # print(len(tr_loader.dataset))
     for batch_idx, batch in enumerate(tr_loader):
-        if (batch_idx + 1) % 1000 == 0:
+        if (batch_idx + 1) % 100 == 0:
             print('batch', batch_idx + 1)

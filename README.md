@@ -19,16 +19,18 @@ $ python3 main.py
     
 * Performance
 
-| Model                  | Dataset | Accuracy (%) |
-|:----------------------:|:-------:|:------------:|
-| fastText, h=10, bigram | AG      | 92.5         |
-| This repo's model      | AG      | 91.0         |
+| Model                                | Dataset | Accuracy (%) | Training time for a epoch (CPU) |
+|:------------------------------------:|:-------:|:------------:|:-------------------------------:|
+| The original: fastText, h=10, bigram | AG      | 92.5         | 1s                              |
+| This repo's model                    | AG      | 91.3         |                                 |
 
+
+* Embeddings are used instead of binary encoding (=multi-hot)
 * Diff. from the paper
-    * Embeddings instead of binary encoding (=multi-hot)
     * Adam optimizer instead of SGD (stochastic gradient descent)
-    * Hashing trick is NOT used because the vocabulary size is 1.4M (\< 10M)
-    * Hierarchical softmax is NOT used because the number of classes is only 4
+    * No Hashing trick because the vocabulary size is 1.4M (\< 10M)
+    * No Hierarchical softmax because the number of classes is only 4
+    * Dropout
 * Reference
     * https://github.com/poliglot/fasttext
     * https://github.com/bentrevett/pytorch-sentiment-analysis

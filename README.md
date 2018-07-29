@@ -1,5 +1,5 @@
 # Bag of Tricks for Efficient Text Classification, fastText
-Unofficial Implementation of "Bag of Tricks for Efficient Text Classification", 2016, Armand Joulin et al. (https://arxiv.org/pdf/1607.01759.pdf)
+(Unofficial) PyTorch Implementation of "Bag of Tricks for Efficient Text Classification", 2016, Armand Joulin et al. (https://arxiv.org/pdf/1607.01759.pdf)
 
 * Model
     * fastText, h=10, bigram (See Table 1 of the paper)
@@ -22,7 +22,7 @@ $ python3 main.py
 | Model                                | Dataset | Accuracy (%) | Training time for an epoch (CPU) |
 |:------------------------------------:|:-------:|:------------:|:--------------------------------:|
 | The original: fastText, h=10, bigram | AG      | 92.5         | 1 s                              |
-| This repo's model                    | AG      | 91.3         | 28 s                             |
+| This repo's model                    | AG      | 91.0         | 28 s                             |
 
 
 * Embeddings are used instead of binary encoding (=multi-hot)
@@ -30,7 +30,6 @@ $ python3 main.py
     * Adam optimizer instead of SGD (stochastic gradient descent)
     * No Hashing trick because the vocabulary size is 1.4M (\< 10M)
     * No Hierarchical softmax because the number of classes is only 4
-    * Dropout
 * Reference
     * https://github.com/poliglot/fasttext
     * https://github.com/bentrevett/pytorch-sentiment-analysis

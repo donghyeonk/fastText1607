@@ -27,7 +27,7 @@ parser.add_argument('--wd', type=float, default=0)  #
 
 parser.add_argument('--grad_max_norm', type=float, default=0)
 parser.add_argument('--use_bn', type=int, default=0)
-parser.add_argument('--use_dropout', type=int, default=1)
+parser.add_argument('--use_dropout', type=int, default=0)
 
 parser.add_argument('--batch_size', type=int, default=256 * 4)  #
 parser.add_argument('--epochs', type=int, default=5 * 16)  #
@@ -231,6 +231,7 @@ def main():
         # optional
         evaluate_epoch(device, test_loader, model, epoch, 'Test')
 
+        # # learning rate decay
         # if epoch < args.epochs:
         #     model.lr_decay(epoch, optimizer)
 

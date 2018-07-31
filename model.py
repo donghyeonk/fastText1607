@@ -3,6 +3,41 @@ import torch.nn.functional as F
 from torch import nn
 
 
+class FastTextMuitiHot(nn.Module):
+    def __init__(self, config, hidden_size=10):
+        super(FastTextMuitiHot, self).__init__()
+        self.config = config
+
+        self.linear = nn.Linear(self.config.vocab_size, hidden_size)
+        self.fc = nn.Linear(hidden_size, config.num_classes)
+
+        self.init_linears()
+
+    def forward(self, x):
+        # (batch_size, vocab_size) -> (batch_size, 10)
+        x = self.linear(x)
+
+        # (batch_size, 10) -> (batch size, num_classes)
+        out = self.fc(x)
+
+        # TODO hierarchical softmax
+
+        return F.log_softmax(out, dim=1)
+
+    def init_linears(self):
+        nn.init.xavier_uniform_(self.linear.weight, gain=1)
+        nn.init.uniform_(self.linear.bias)
+        nn.init.xavier_uniform_(self.fc.weight, gain=1)
+        nn.init.uniform_(self.fc.bias)
+
+    def lr_decay(self, epoch, optimizer):
+        # https://calculus.subwiki.org/wiki/Gradient_descent_with_decaying_learning_rate
+        next_lr = self.config.lr / (1. + epoch)
+        print('Next learning rate: {:.6f}'.format(next_lr))
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = next_lr
+
+
 class FastText(nn.Module):
     def __init__(self, config):
         super(FastText, self).__init__()

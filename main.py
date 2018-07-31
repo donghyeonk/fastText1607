@@ -21,20 +21,21 @@ parser.add_argument('--n_grams', type=int, default=2)
 parser.add_argument('--embedding_dim', type=int, default=10)
 parser.add_argument('--vocab_size', type=int, default=1377891)
 
-parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--lr', type=float, default=5e-2,
+                    help='0.05, 0.1, 0.25, 0.5')
 parser.add_argument('--momentum', type=float, default=5e-1)  # SGD
-parser.add_argument('--wd', type=float, default=0)  #
+parser.add_argument('--wd', type=float, default=0)
 
 parser.add_argument('--grad_max_norm', type=float, default=0)
 parser.add_argument('--use_bn', type=int, default=0)
 parser.add_argument('--use_dropout', type=int, default=0)
 
-parser.add_argument('--batch_size', type=int, default=256 * 4)  #
-parser.add_argument('--epochs', type=int, default=5 * 16)  #
-parser.add_argument('--log_interval', type=int, default=50)
-parser.add_argument('--yes_cuda', type=int, default=1)
+parser.add_argument('--batch_size', type=int, default=512)  #
+parser.add_argument('--epochs', type=int, default=5)
+parser.add_argument('--log_interval', type=int, default=100)
+parser.add_argument('--yes_cuda', type=int, default=0)
 parser.add_argument('--num_processes', type=int, default=2)
-parser.add_argument('--num_workers', type=int, default=2)
+parser.add_argument('--num_workers', type=int, default=4)
 
 
 def train_epoch(device, loader, model, epoch, optimizer, config):
@@ -46,8 +47,10 @@ def train_epoch(device, loader, model, epoch, optimizer, config):
     start_t = datetime.now()
     for batch_idx, ex in enumerate(loader):
         target = ex[2].to(device)
+        # target = ex[1].to(device)
         optimizer.zero_grad()
         output = model(ex[0].to(device), ex[1].to(device))
+        # output = model(ex[0].to(device))
         loss = F.nll_loss(output, target)
         loss.backward()
         if config.grad_max_norm > 0:
@@ -87,7 +90,9 @@ def evaluate_epoch(device, loader, model, epoch, mode):
     with torch.no_grad():
         for batch_idx, ex in enumerate(loader):
             target = ex[2].to(device)
+            # target = ex[1].to(device)
             output = model(ex[0].to(device), ex[1].to(device))
+            # output = model(ex[0].to(device))
             loss = F.nll_loss(output, target)
             eval_loss += len(output) * loss.item()
             pred = output.max(1, keepdim=True)[1]

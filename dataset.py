@@ -162,7 +162,7 @@ class AGData(object):
             shuffle=shuffle,
             batch_size=batch_size,
             num_workers=num_workers,
-            collate_fn=batchify,
+            collate_fn=self.batchify,
             pin_memory=True
         )
 
@@ -170,7 +170,7 @@ class AGData(object):
             AGDataset(self.valid_data),
             batch_size=batch_size,
             num_workers=num_workers,
-            collate_fn=batchify,
+            collate_fn=self.batchify,
             pin_memory=True
         )
 
@@ -178,7 +178,7 @@ class AGData(object):
             AGDataset(self.test_data),
             batch_size=batch_size,
             num_workers=num_workers,
-            collate_fn=batchify,
+            collate_fn=self.batchify,
             pin_memory=True
         )
         return train_loader, valid_loader, test_loader
@@ -217,22 +217,38 @@ class AGData(object):
         print(len(train_data2), len(valid_data))
         return train_data2, valid_data
 
+    @staticmethod
+    def batchify(b):
+        x = [e[0] for e in b]
+        x_len = [e[1] for e in b]
+        y = [e[2] for e in b]
+
+        x = torch.tensor(x, dtype=torch.int64)
+        x_len = torch.tensor(x_len, dtype=torch.int64)
+        y = torch.tensor(y, dtype=torch.int64)
+
+        return x, x_len, y
+
+    def batchify_multihot(self, b):
+        i = list()
+        for eidx, e in enumerate(b):
+            for ev in e[0][:e[1]]:
+                i.append([eidx, ev])
+        v = torch.ones(len(i))
+        i = torch.LongTensor(i)
+        x = torch.sparse.FloatTensor(i.t(), v,
+                                     torch.Size([len(b),
+                                                 len(self.ngram2idx)]))\
+            .to_dense()
+
+        y = torch.tensor([e[2] for e in b], dtype=torch.int64)
+
+        return x, y
+
 
 def get_ngram(words, n=2):
     # TODO add ngrams up to n
     return [' '.join(words[i: i+n]) for i in range(len(words)-(n-1))]
-
-
-def batchify(b):
-    x = [e[0] for e in b]
-    x_len = [e[1] for e in b]
-    y = [e[2] for e in b]
-
-    x = torch.tensor(x, dtype=torch.int64)
-    x_len = torch.tensor(x_len, dtype=torch.int64)
-    y = torch.tensor(y, dtype=torch.int64)
-
-    return x, x_len, y
 
 
 class AGDataset(Dataset):
@@ -248,8 +264,10 @@ class AGDataset(Dataset):
 
 if __name__ == '__main__':
     import argparse
+    from datetime import datetime
     import pickle
     import pprint
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data_path', type=str,
                         default='./data/train.csv')
@@ -266,17 +284,17 @@ if __name__ == '__main__':
 
     pprint.PrettyPrinter().pprint(args.__dict__)
 
-    # import os
-    # if os.path.exists(args.pickle_path):
-    #     with open(args.pickle_path, 'rb') as f_pkl:
-    #         agdata = pickle.load(f_pkl)
-    # else:
-    agdata = AGData(args)
-    with open(args.pickle_path, 'wb') as f_pkl:
-        pickle.dump(agdata, f_pkl)
+    import os
+    if os.path.exists(args.pickle_path):
+        with open(args.pickle_path, 'rb') as f_pkl:
+            agdata = pickle.load(f_pkl)
+    else:
+        agdata = AGData(args)
+        with open(args.pickle_path, 'wb') as f_pkl:
+            pickle.dump(agdata, f_pkl)
 
     tr_loader, _, _ = agdata.get_dataloaders(batch_size=256, num_workers=4)
     # print(len(tr_loader.dataset))
     for batch_idx, batch in enumerate(tr_loader):
-        if (batch_idx + 1) % 100 == 0:
-            print('batch', batch_idx + 1)
+        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(tr_loader):
+            print(datetime.now(), 'batch', batch_idx + 1)

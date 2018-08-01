@@ -36,6 +36,7 @@ parser.add_argument('--log_interval', type=int, default=10)
 parser.add_argument('--yes_cuda', type=int, default=0)
 parser.add_argument('--num_processes', type=int, default=2)
 parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--num_threads', type=int, default=20)
 
 
 def train_epoch(device, loader, model, epoch, optimizer, config):
@@ -191,6 +192,9 @@ def main():
         torch.cuda.manual_seed(args.seed)
     print('CUDA device_count {0}'.format(torch.cuda.device_count())
           if use_cuda else 'CPU')
+
+    torch.set_num_threads(args.num_threads)
+    print('#threads', torch.get_num_threads())
 
     with open(args.data_path, 'rb') as f:
         ag_dataset = pickle.load(f)

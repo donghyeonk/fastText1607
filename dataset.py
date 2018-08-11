@@ -156,14 +156,15 @@ class AGData(object):
         print('valid', count(self.valid_data))
         print('test ', count(self.test_data))
 
-    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4):
+    def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4,
+                        pin_memory=True):
         train_loader = torch.utils.data.DataLoader(
             AGDataset(self.train_data),
             shuffle=shuffle,
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=self.batchify,
-            pin_memory=True
+            pin_memory=pin_memory
         )
 
         valid_loader = torch.utils.data.DataLoader(
@@ -171,7 +172,7 @@ class AGData(object):
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=self.batchify,
-            pin_memory=True
+            pin_memory=pin_memory
         )
 
         test_loader = torch.utils.data.DataLoader(
@@ -179,7 +180,7 @@ class AGData(object):
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=self.batchify,
-            pin_memory=True
+            pin_memory=pin_memory
         )
         return train_loader, valid_loader, test_loader
 

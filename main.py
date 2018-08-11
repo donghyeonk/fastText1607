@@ -128,7 +128,7 @@ def load_model(model, optimizer, load_path):
 
 
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild
-def train(rank, device, model, args):
+def train(rank, device, model, args, use_cuda):
     torch.manual_seed(args.seed + rank)
 
     with open(args.data_path, 'rb') as f:
@@ -139,7 +139,8 @@ def train(rank, device, model, args):
     args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
     train_loader, valid_loader, test_loader = \
         ag_dataset.get_dataloaders(batch_size=args.batch_size,
-                                   num_workers=args.num_workers)
+                                   num_workers=args.num_workers,
+                                   pin_memory=use_cuda)
     print(len(train_loader.dataset), len(valid_loader.dataset),
           len(test_loader.dataset))
 
@@ -174,7 +175,7 @@ def hog_wild():
 
     processes = []
     for rank in range(args.num_processes):
-        p = mp.Process(target=train, args=(rank, device, model, args))
+        p = mp.Process(target=train, args=(rank, device, model, args, use_cuda))
         p.start()
         processes.append(p)
     for p in processes:
@@ -202,7 +203,9 @@ def main():
     args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
     pprint.PrettyPrinter().pprint(args.__dict__)
     train_loader, valid_loader, test_loader = \
-        ag_dataset.get_dataloaders(batch_size=args.batch_size)
+        ag_dataset.get_dataloaders(batch_size=args.batch_size,
+                                   num_workers=args.num_workers,
+                                   pin_memory=use_cuda)
     print(len(train_loader.dataset), len(valid_loader.dataset),
           len(test_loader.dataset))
 

@@ -53,21 +53,14 @@ class FastText(nn.Module):
             self.bn = nn.BatchNorm1d(config.embedding_dim)
 
     def forward(self, x, x_len):
-        # (batch size, max len) -> (max len, batch size)
-        x.transpose_(0, 1)
-
-        # (max len, batch size) -> (max len, batch size, embedding_dim)
+        # (batch size, max len) -> (batch size, max len, embedding_dim)
         embed = self.bon_embed(x)
-
-        # (max len, batch size, embedding_dim)
-        # -> (batch size, max len, embedding_dim)
-        embed = embed.permute(1, 0, 2)
 
         # (batch size, max len, embedding_dim) -> (batch size, embedding_dim)
         # Avg. embed.
         # Padded parts are zeros
         embed = torch.sum(embed, 1).squeeze(1)
-        batch_size = x.size(1)
+        batch_size = embed.size(0)
         x_len = x_len.float().unsqueeze(1)
         x_len = x_len.expand(batch_size, self.config.embedding_dim)
         embed /= x_len

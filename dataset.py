@@ -41,9 +41,10 @@ class AGData(object):
         train_data = list()
         test_data = list()
 
+        spacy.prefer_gpu()
+
         # https://spacy.io/usage/facts-figures#benchmarks-models-english
-        # Run the following command on terminal
-        # python3 -m spacy download en_core_web_lg
+        # python3 -m spacy download en_core_web_lg --user
         nlp = spacy.load('en_core_web_lg', disable=['parser', 'tagger', 'ner'])
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
@@ -275,9 +276,9 @@ if __name__ == '__main__':
     parser.add_argument('--test_data_path', type=str,
                         default='./data/test.csv')
     parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
-    parser.add_argument('--seed', type=int, default=2018)
+    parser.add_argument('--seed', type=int, default=2019)
     parser.add_argument('--num_classes', type=int, default=4)
-    parser.add_argument('--valid_size_per_class', type=int, default=1900)
+    parser.add_argument('--valid_size_per_class', type=int, default=1000)
     parser.add_argument('--n_gram', type=int, default=2)
     parser.add_argument('--padding', type=int, default=1)
     parser.add_argument('--max_len', type=int, default=467)  #
@@ -287,6 +288,7 @@ if __name__ == '__main__':
 
     import os
     if os.path.exists(args.pickle_path):
+        print('Found an existing pickle')
         with open(args.pickle_path, 'rb') as f_pkl:
             agdata = pickle.load(f_pkl)
     else:

@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 import html
 import numpy as np
 import re
@@ -7,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-class AGData(object):
+class FTData(object):
     def __init__(self, config):
         self.config = config
         self.num_classes = config.num_classes
@@ -64,8 +65,8 @@ class AGData(object):
                                                 padding=args.padding)
                 train_data.append([x, x_len, y])
 
-                if (idx + 1) % 10000 == 0:
-                    print(idx + 1)
+                if (idx + 1) % self.config.log_interval == 0:
+                    print(datetime.now(), idx + 1)
 
         # test
         with open(self.test_data_path, 'r', newline='', encoding='utf-8') as f:
@@ -137,13 +138,15 @@ class AGData(object):
              else self.ngram2idx['UNK']
              for ng in b_o_ngrams]
 
+        x_len = len(x)
+
         # padding
         if padding > 0:
             while len(x) < self.max_len:
                 x.append(self.ngram2idx['PAD'])
             assert len(x) == self.max_len
 
-        return x, len(x)
+        return x, x_len
 
     def count_labels(self):
         def count(data):
@@ -164,7 +167,7 @@ class AGData(object):
     def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4,
                         pin_memory=True):
         train_loader = torch.utils.data.DataLoader(
-            AGDataset(self.train_data),
+            FTDataset(self.train_data),
             shuffle=shuffle,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -175,7 +178,7 @@ class AGData(object):
         valid_loader = None
         if self.valid_size_per_class > 0:
             valid_loader = torch.utils.data.DataLoader(
-                AGDataset(self.valid_data),
+                FTDataset(self.valid_data),
                 batch_size=batch_size,
                 num_workers=num_workers,
                 collate_fn=self.batchify,
@@ -183,7 +186,7 @@ class AGData(object):
             )
 
         test_loader = torch.utils.data.DataLoader(
-            AGDataset(self.test_data),
+            FTDataset(self.test_data),
             batch_size=batch_size,
             num_workers=num_workers,
             collate_fn=self.batchify,
@@ -226,11 +229,19 @@ class AGData(object):
         print(len(train_data2), len(valid_data))
         return train_data2, valid_data
 
-    @staticmethod
-    def batchify(b):
-        x = [e[0] for e in b]
+    def batchify(self, b):
         x_len = [e[1] for e in b]
-        y = [e[2] for e in b]
+        batch_max_len = max(x_len)
+
+        x = list()
+        y = list()
+        for e in b:
+            while len(e[0]) < batch_max_len:
+                e[0].append(self.ngram2idx['PAD'])
+            assert len(e[0]) == batch_max_len
+
+            x.append(e[0])
+            y.append(e[2])
 
         x = torch.tensor(x, dtype=torch.int64)
         x_len = torch.tensor(x_len, dtype=torch.int64)
@@ -255,45 +266,12 @@ class AGData(object):
         return x, y
 
 
-class DBPData(object):
-    def __init__(self, config):
-        self.config = config
-        self.num_classes = 14
-        self.max_len = config.max_len
-        self.n_over_max_len = 0
-        self.real_max_len = 0
-
-        np.random.seed(config.seed)
-
-        # TODO hashing trick
-
-        self.ngram2idx = dict()
-        self.idx2ngram = dict()
-        self.ngram2idx['PAD'] = 0
-        self.idx2ngram[0] = 'PAD'
-        self.ngram2idx['UNK'] = 1
-        self.idx2ngram[1] = 'UNK'
-
-        self.html_tag_re = re.compile(r'<[^>]+>')
-        self.train_data, self.test_data = self.load_csv()
-        self.train_data, self.valid_data = \
-            self.split_tr_va(n_class_examples=config.valid_size_per_class)
-        self.count_labels()
-
-        print('real_max_len', self.real_max_len)
-        if self.n_over_max_len > 0:
-            print('n_over_max_len {}/{} ({:.1f}%)'.
-                  format(self.n_over_max_len, len(self.train_data),
-                         100 * self.n_over_max_len / len(self.train_data)))
-
-
-
 def get_ngram(words, n=2):
     # TODO add ngrams up to n
     return [' '.join(words[i: i+n]) for i in range(len(words)-(n-1))]
 
 
-class AGDataset(Dataset):
+class FTDataset(Dataset):
     def __init__(self, examples):
         self.examples = examples
 
@@ -306,7 +284,6 @@ class AGDataset(Dataset):
 
 if __name__ == '__main__':
     import argparse
-    from datetime import datetime
     import pickle
     import pprint
 
@@ -320,8 +297,9 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=2019)
     parser.add_argument('--valid_size_per_class', type=int, default=0)
     parser.add_argument('--n_gram', type=int, default=2)
-    parser.add_argument('--padding', type=int, default=1)
+    parser.add_argument('--padding', type=int, default=0)
     parser.add_argument('--max_len', type=int, default=467)  #
+    parser.add_argument('--log_interval', type=int, default=10000)
     args = parser.parse_args()
 
     pprint.PrettyPrinter().pprint(args.__dict__)
@@ -329,15 +307,15 @@ if __name__ == '__main__':
     import os
     pickle_path = os.path.join(args.data_dir, args.pickle_name)
     if os.path.exists(pickle_path):
-        print('Found an existing pickle')
+        print('Found an existing pickle', pickle_path)
         with open(pickle_path, 'rb') as f_pkl:
-            agdata = pickle.load(f_pkl)
+            ftdata = pickle.load(f_pkl)
     else:
-        agdata = AGData(args)
+        ftdata = FTData(args)
         with open(pickle_path, 'wb') as f_pkl:
-            pickle.dump(agdata, f_pkl)
+            pickle.dump(ftdata, f_pkl, protocol=4)
 
-    tr_loader, _, _ = agdata.get_dataloaders(batch_size=256, num_workers=4)
+    tr_loader, _, _ = ftdata.get_dataloaders(batch_size=256, num_workers=4)
     # print(len(tr_loader.dataset))
     for batch_idx, batch in enumerate(tr_loader):
         if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(tr_loader):

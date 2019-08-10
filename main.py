@@ -7,7 +7,7 @@ import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import torch.optim as optim
-from dataset import AGData
+from dataset import FTData
 from model import FastText
 
 parser = argparse.ArgumentParser()
@@ -66,7 +66,8 @@ def train_epoch(device, loader, model, epoch, optimizer, config):
         if (batch_idx + 1) % config.log_interval == 0 \
                 or batch_idx == len(loader) - 1:
             _progress = \
-                '{} {} Train Epoch {}, [{}/{} ({:.1f}%)],\tBatch Loss: {:.6f}' \
+                'pid {}, {} Train Epoch {}, [{}/{} ({:.1f}%)],' \
+                '\tBatch Loss: {:.6f}' \
                 .format(pid, datetime.now(), epoch,
                         example_count, len(loader.dataset),
                         100. * example_count / len(loader.dataset),
@@ -127,13 +128,13 @@ def train(rank, device, model, args, use_cuda):
     torch.manual_seed(args.seed + rank)
 
     with open(args.data_path, 'rb') as f:
-        ag_dataset = pickle.load(f)
-    assert len(ag_dataset.ngram2idx) == args.vocab_size, \
-        len(ag_dataset.ngram2idx)
+        ft_dataset = pickle.load(f)
+    assert len(ft_dataset.ngram2idx) == args.vocab_size, \
+        len(ft_dataset.ngram2idx)
     args_dict = vars(args)
-    args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
+    args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
     train_loader, valid_loader, test_loader = \
-        ag_dataset.get_dataloaders(batch_size=args.batch_size,
+        ft_dataset.get_dataloaders(batch_size=args.batch_size,
                                    num_workers=args.num_workers,
                                    pin_memory=use_cuda)
     print(len(train_loader.dataset), len(valid_loader.dataset),
@@ -195,17 +196,15 @@ def main():
     print('#threads', torch.get_num_threads())
 
     with open(args.data_path, 'rb') as f:
-        ag_dataset = pickle.load(f)
+        ft_dataset = pickle.load(f)
 
     args_dict = vars(args)
-    args_dict['num_classes'] = ag_dataset.num_classes
-    args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
-    print('#classes', ag_dataset.num_classes)
-    print('Vocab size', args_dict['vocab_size'])
+    args_dict['num_classes'] = ft_dataset.num_classes
+    args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
 
     pprint.PrettyPrinter().pprint(args.__dict__)
     train_loader, valid_loader, test_loader = \
-        ag_dataset.get_dataloaders(batch_size=args.batch_size,
+        ft_dataset.get_dataloaders(batch_size=args.batch_size,
                                    num_workers=args.num_workers,
                                    pin_memory=use_cuda)
     print('train size', len(train_loader.dataset))

@@ -14,12 +14,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, default='fastText1607')
 parser.add_argument('--checkpoint_dir', type=str, default='./ckpt/')
 parser.add_argument('--seed', type=int, default=2019)
-parser.add_argument('--data_path', type=str, default='./data/ag.pkl')
-parser.add_argument('--num_classes', type=int, default=4)
+parser.add_argument('--data_path', type=str,
+                    default='./data/ag_news_csv/ag.pkl')
 
 parser.add_argument('--n_grams', type=int, default=2)
 parser.add_argument('--embedding_dim', type=int, default=10)
-parser.add_argument('--vocab_size', type=int, default=1377891)
 
 parser.add_argument('--lr', type=float, default=2.5e-1,
                     help='0.05, 0.1, 0.25, 0.5')
@@ -197,15 +196,22 @@ def main():
 
     with open(args.data_path, 'rb') as f:
         ag_dataset = pickle.load(f)
+
     args_dict = vars(args)
+    args_dict['num_classes'] = ag_dataset.num_classes
     args_dict['vocab_size'] = len(ag_dataset.ngram2idx)
+    print('#classes', ag_dataset.num_classes)
+    print('Vocab size', args_dict['vocab_size'])
+
     pprint.PrettyPrinter().pprint(args.__dict__)
     train_loader, valid_loader, test_loader = \
         ag_dataset.get_dataloaders(batch_size=args.batch_size,
                                    num_workers=args.num_workers,
                                    pin_memory=use_cuda)
-    print(len(train_loader.dataset), len(valid_loader.dataset),
-          len(test_loader.dataset))
+    print('train size', len(train_loader.dataset))
+    if valid_loader is not None:
+        print('valid size', len(valid_loader.dataset))
+    print('test size', len(test_loader.dataset))
 
     model = FastText(args).to(device)
 
@@ -221,18 +227,19 @@ def main():
         train_epoch(device, train_loader, model, epoch, optimizer, args)
 
         # valid
-        valid_loss, valid_acc = \
-            evaluate_epoch(device, valid_loader, model, epoch, 'Valid')
-        if valid_acc > best_acc:
-            best_acc = valid_acc
-            best_epoch = epoch
-            save_model(model, optimizer, args,
-                       os.path.join(args.checkpoint_dir,
-                                    '{}.pth'.format(args.name)))
-        # TODO early stopping
+        if valid_loader is not None:
+            valid_loss, valid_acc = \
+                evaluate_epoch(device, valid_loader, model, epoch, 'Valid')
+            if valid_acc > best_acc:
+                best_acc = valid_acc
+                best_epoch = epoch
+                save_model(model, optimizer, args,
+                           os.path.join(args.checkpoint_dir,
+                                        '{}.pth'.format(args.name)))
+            # TODO early stopping
 
-        print('\tHighest Valid Accuracy {:.2f}%, Epoch {}'.
-              format(100 * best_acc, best_epoch))
+            print('\tHighest Valid Accuracy {:.2f}%, Epoch {}'.
+                  format(100 * best_acc, best_epoch))
 
         # optional
         evaluate_epoch(device, test_loader, model, epoch, 'Test')
@@ -242,9 +249,10 @@ def main():
             model.lr_decay(epoch, optimizer)
 
     # load the best
-    load_model(model, optimizer, os.path.join(args.checkpoint_dir,
-                                              '{}.pth'.format(args.name)))
-    evaluate_epoch(device, test_loader, model, best_epoch, 'Test')
+    if valid_loader is not None:
+        load_model(model, optimizer, os.path.join(args.checkpoint_dir,
+                                                  '{}.pth'.format(args.name)))
+        evaluate_epoch(device, test_loader, model, best_epoch, 'Test')
 
 
 if __name__ == '__main__':

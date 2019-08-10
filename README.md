@@ -22,13 +22,20 @@ $ python3 dataset.py
 $ python3 main.py
 ```
     
-* Performance
+* Performance (accuracy %)
 
-| Model                        | Dataset | Accuracy (%) | Training time for an epoch (CPU) |
-|:----------------------------:|:-------:|:------------:|:--------------------------------:|
-| fastText, h=10, bigram       | AG      | 92.5         | 1 s                              |
-| My implementation of fastText| AG      | 92.2         | 11 s (Intel i7 8th gen.)         |
+| Model                        | AG     | DBP |                          |
+|:----------------------------:|:------:|:------:|:--------------------------------:|
+| fastText, h=10, bigram       | 92.5   |  98.6  |                              |
+| My implementation of fastText| 92.7   |  98.6  |        |
 
+
+* Training time for an epoch (CPU)
+
+|        | fastText | My implementation of fastText (Intel i7 8th gen.) | 
+|:------:|:--------:|:----------:|
+| AG     | 1s       |  11s       |
+| DBP    | 7s       | 117s       |
 
 * Embeddings are used instead of binary encoding (=multi-hot).
 * Diff. from the paper

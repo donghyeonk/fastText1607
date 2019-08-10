@@ -11,9 +11,12 @@ class AGData(object):
     def __init__(self, config):
         self.config = config
         self.num_classes = config.num_classes
+        self.train_data_path = os.path.join(config.data_dir, 'train.csv')
+        self.test_data_path = os.path.join(config.data_dir, 'test.csv')
         self.max_len = config.max_len
         self.n_over_max_len = 0
         self.real_max_len = 0
+        self.valid_size_per_class = config.valid_size_per_class
 
         np.random.seed(config.seed)
 
@@ -28,14 +31,16 @@ class AGData(object):
 
         self.html_tag_re = re.compile(r'<[^>]+>')
         self.train_data, self.test_data = self.load_csv()
-        self.train_data, self.valid_data = \
-            self.split_tr_va(n_class_examples=config.valid_size_per_class)
+        if self.valid_size_per_class > 0:
+            self.train_data, self.valid_data = \
+                self.split_tr_va(n_class_examples=config.valid_size_per_class)
         self.count_labels()
 
         print('real_max_len', self.real_max_len)
-        print('n_over_max_len {}/{} ({:.1f}%)'.
-              format(self.n_over_max_len, len(self.train_data),
-                     100 * self.n_over_max_len / len(self.train_data)))
+        if self.n_over_max_len > 0:
+            print('n_over_max_len {}/{} ({:.1f}%)'.
+                  format(self.n_over_max_len, len(self.train_data),
+                         100 * self.n_over_max_len / len(self.train_data)))
 
     def load_csv(self):
         train_data = list()
@@ -49,8 +54,7 @@ class AGData(object):
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
         # train
-        with open(self.config.train_data_path, 'r', newline='',
-                  encoding='utf-8') as f:
+        with open(self.train_data_path, 'r', newline='', encoding='utf-8') as f:
             reader = csv.reader(f, quotechar='"')
             for idx, features in enumerate(reader):
                 y = int(features[0]) - 1
@@ -64,8 +68,7 @@ class AGData(object):
                     print(idx + 1)
 
         # test
-        with open(self.config.test_data_path, 'r', newline='',
-                  encoding='utf-8') as f:
+        with open(self.test_data_path, 'r', newline='', encoding='utf-8') as f:
             reader = csv.reader(f, quotechar='"')
             for idx, features in enumerate(reader):
                 y = int(features[0]) - 1
@@ -75,7 +78,7 @@ class AGData(object):
                                                 padding=args.padding)
                 test_data.append([x, x_len, y])
 
-        print('dictionary size', len(self.ngram2idx))
+        print('dictionary size {}'.format(len(self.ngram2idx)))
 
         return train_data, test_data
 
@@ -107,10 +110,18 @@ class AGData(object):
                            n=self.config.n_gram)
         b_o_ngrams = b_o_w + n_gram
 
-        # limit max len
-        if padding > 0:
-            if self.max_len < len(b_o_ngrams):
+        ngs_len = len(b_o_ngrams)
+
+        if self.max_len < ngs_len:
+
+            # limit max len
+            if padding > 0:
                 b_o_ngrams = b_o_ngrams[:self.max_len]
+
+            self.n_over_max_len += 1
+
+        if self.real_max_len < ngs_len:
+            self.real_max_len = ngs_len
 
         # update dict.
         if is_train:
@@ -126,21 +137,13 @@ class AGData(object):
              else self.ngram2idx['UNK']
              for ng in b_o_ngrams]
 
-        x_len = len(x)
-
-        if x_len > self.max_len:
-            self.n_over_max_len += 1
-
-        if x_len > self.real_max_len:
-            self.real_max_len = x_len
-
         # padding
         if padding > 0:
             while len(x) < self.max_len:
                 x.append(self.ngram2idx['PAD'])
             assert len(x) == self.max_len
 
-        return x, x_len
+        return x, len(x)
 
     def count_labels(self):
         def count(data):
@@ -154,7 +157,8 @@ class AGData(object):
             return count_dict
 
         print('train', count(self.train_data))
-        print('valid', count(self.valid_data))
+        if self.valid_size_per_class > 0:
+            print('valid', count(self.valid_data))
         print('test ', count(self.test_data))
 
     def get_dataloaders(self, batch_size=32, shuffle=True, num_workers=4,
@@ -168,13 +172,15 @@ class AGData(object):
             pin_memory=pin_memory
         )
 
-        valid_loader = torch.utils.data.DataLoader(
-            AGDataset(self.valid_data),
-            batch_size=batch_size,
-            num_workers=num_workers,
-            collate_fn=self.batchify,
-            pin_memory=pin_memory
-        )
+        valid_loader = None
+        if self.valid_size_per_class > 0:
+            valid_loader = torch.utils.data.DataLoader(
+                AGDataset(self.valid_data),
+                batch_size=batch_size,
+                num_workers=num_workers,
+                collate_fn=self.batchify,
+                pin_memory=pin_memory
+            )
 
         test_loader = torch.utils.data.DataLoader(
             AGDataset(self.test_data),
@@ -183,6 +189,7 @@ class AGData(object):
             collate_fn=self.batchify,
             pin_memory=pin_memory
         )
+
         return train_loader, valid_loader, test_loader
 
     def split_tr_va(self, n_class_examples=1900):
@@ -191,7 +198,7 @@ class AGData(object):
         item_all = list()
 
         print('Splitting..')
-        while count < n_class_examples * self.config.num_classes:
+        while count < n_class_examples * self.num_classes:
             rand_pick = np.random.randint(len(self.train_data))
             # print(rand_pick)
             label = self.train_data[rand_pick][-1]
@@ -248,6 +255,39 @@ class AGData(object):
         return x, y
 
 
+class DBPData(object):
+    def __init__(self, config):
+        self.config = config
+        self.num_classes = 14
+        self.max_len = config.max_len
+        self.n_over_max_len = 0
+        self.real_max_len = 0
+
+        np.random.seed(config.seed)
+
+        # TODO hashing trick
+
+        self.ngram2idx = dict()
+        self.idx2ngram = dict()
+        self.ngram2idx['PAD'] = 0
+        self.idx2ngram[0] = 'PAD'
+        self.ngram2idx['UNK'] = 1
+        self.idx2ngram[1] = 'UNK'
+
+        self.html_tag_re = re.compile(r'<[^>]+>')
+        self.train_data, self.test_data = self.load_csv()
+        self.train_data, self.valid_data = \
+            self.split_tr_va(n_class_examples=config.valid_size_per_class)
+        self.count_labels()
+
+        print('real_max_len', self.real_max_len)
+        if self.n_over_max_len > 0:
+            print('n_over_max_len {}/{} ({:.1f}%)'.
+                  format(self.n_over_max_len, len(self.train_data),
+                         100 * self.n_over_max_len / len(self.train_data)))
+
+
+
 def get_ngram(words, n=2):
     # TODO add ngrams up to n
     return [' '.join(words[i: i+n]) for i in range(len(words)-(n-1))]
@@ -271,14 +311,14 @@ if __name__ == '__main__':
     import pprint
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data_path', type=str,
-                        default='./data/train.csv')
-    parser.add_argument('--test_data_path', type=str,
-                        default='./data/test.csv')
-    parser.add_argument('--pickle_path', type=str, default='./data/ag.pkl')
+    parser.add_argument('--data_dir', type=str,
+                        default='./data/ag_news_csv/')
+    parser.add_argument('--pickle_name', type=str,
+                        default='ag.pkl')
+    parser.add_argument('--num_classes', type=int,
+                        default=4)
     parser.add_argument('--seed', type=int, default=2019)
-    parser.add_argument('--num_classes', type=int, default=4)
-    parser.add_argument('--valid_size_per_class', type=int, default=1000)
+    parser.add_argument('--valid_size_per_class', type=int, default=0)
     parser.add_argument('--n_gram', type=int, default=2)
     parser.add_argument('--padding', type=int, default=1)
     parser.add_argument('--max_len', type=int, default=467)  #
@@ -287,13 +327,14 @@ if __name__ == '__main__':
     pprint.PrettyPrinter().pprint(args.__dict__)
 
     import os
-    if os.path.exists(args.pickle_path):
+    pickle_path = os.path.join(args.data_dir, args.pickle_name)
+    if os.path.exists(pickle_path):
         print('Found an existing pickle')
-        with open(args.pickle_path, 'rb') as f_pkl:
+        with open(pickle_path, 'rb') as f_pkl:
             agdata = pickle.load(f_pkl)
     else:
         agdata = AGData(args)
-        with open(args.pickle_path, 'wb') as f_pkl:
+        with open(pickle_path, 'wb') as f_pkl:
             pickle.dump(agdata, f_pkl)
 
     tr_loader, _, _ = agdata.get_dataloaders(batch_size=256, num_workers=4)

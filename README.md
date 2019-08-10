@@ -34,7 +34,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     $ python3 dataset.py --data_dir ./data/dbpedia_csv --pickle_name dbp.pkl --num_classes 14 --max_len 3013
     
     # Run
-    $ python3 main.py --data_path ./data/dbpedia_csv/dbp.pkl --lr 0.1
+    $ python3 main.py --data_path ./data/dbpedia_csv/dbp.pkl
     ```
 
     * Sogou
@@ -48,10 +48,10 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     
 * Performance (accuracy %)
 
-| Model                        | AG     | DBP    | Sogou  |
-|:----------------------------:|:------:|:------:|:------:|
-| fastText, h=10, bigram       | 92.5   |  98.6  |        |
-| My implementation of fastText| 92.6   |  98.6  |        |
+| Model                         | AG           | Sogou        | DBP          |
+|:-----------------------------:|:------------:|:------------:|:------------:|
+| fastText, h=10, bigram        | 92.5         |              | 98.6         |
+| My implementation of fastText | 92.6 (Ep. 3) |              | 98.5 (Ep. 5) |
 
 
 * Training time for an epoch (CPU)
@@ -59,8 +59,8 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 |        | fastText | My implementation of fastText (Intel i7 8th gen.) | 
 |:------:|:--------:|:----------:|
 | AG     | 1s       |  11s       |
-| DBP    | 7s       | 117s       |
 | Sogou  |          |            |
+| DBP    | 7s       | 117s       |
 
 * Embeddings are used instead of binary encoding (=multi-hot).
 * Diff. from the paper

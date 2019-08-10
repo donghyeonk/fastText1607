@@ -6,6 +6,7 @@ import re
 import spacy
 import torch
 from torch.utils.data import Dataset
+import sys
 
 
 class FTData(object):
@@ -20,6 +21,8 @@ class FTData(object):
         self.valid_size_per_class = config.valid_size_per_class
 
         np.random.seed(config.seed)
+
+        csv.field_size_limit(sys.maxsize)
 
         # TODO hashing trick
 

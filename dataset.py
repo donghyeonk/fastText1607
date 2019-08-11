@@ -310,9 +310,13 @@ if __name__ == '__main__':
     import os
     pickle_path = os.path.join(args.data_dir, args.pickle_name)
     if os.path.exists(pickle_path):
-        print('Found an existing pickle', pickle_path)
+        print(datetime.now(), 'Found an existing pickle', pickle_path)
         with open(pickle_path, 'rb') as f_pkl:
             ftdata = pickle.load(f_pkl)
+
+        print('max len', ftdata.max_len)
+        print('real max len', ftdata.real_max_len)
+        print('vocab size', len(ftdata.ngram2idx))
     else:
         ftdata = FTData(args)
         with open(pickle_path, 'wb') as f_pkl:

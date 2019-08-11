@@ -40,10 +40,10 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     * Sogou
     ```
     # Create a pickle file: data/sogou_news_csv/sogou.pkl
-    $ python3 dataset.py --data_dir ./data/sogou_news_csv --pickle_name sogou.pkl --num_classes 5 --max_len 500
+    $ python3 dataset.py --data_dir ./data/sogou_news_csv --pickle_name sogou.pkl --num_classes 5 --max_len 90064
     
     # Run
-    $ python3 main.py --data_path ./data/sogou_news_csv/sogou.pkl --lr 0.1
+    $ python3 main.py --data_path ./data/sogou_news_csv/sogou.pkl
     ```
     
 * Performance (accuracy %)
@@ -65,8 +65,8 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 * Embeddings are used instead of binary encoding (=multi-hot).
 * Diff. from the paper
     * Adam optimizer instead of SGD (stochastic gradient descent)
-    * No Hashing trick because the vocabulary size (1.4M, 6.7M) is less than 10M
-    * No Hierarchical softmax because the number of classes is only 4, 14
+    * No Hashing trick because the vocabulary size (1.4M, 6.7M, 3.4M) is less than 10M
+    * No Hierarchical softmax because the number of classes is only 4, 14, 5
 * Reference
     * https://github.com/poliglot/fasttext
     * https://github.com/bentrevett/pytorch-sentiment-analysis

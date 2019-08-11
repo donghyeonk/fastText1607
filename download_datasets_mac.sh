@@ -13,9 +13,13 @@ echo "Downloading DBP ..."
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=0Bz8a_Dbh9QhbQ2Vic1kxMmZZQ1k' -O- | gsed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=0Bz8a_Dbh9QhbQ2Vic1kxMmZZQ1k" -O dbpedia_csv.tar.gz && rm -rf /tmp/cookies.txt
 tar xvfz dbpedia_csv.tar.gz
 
-echo "Downloading Yelp P. ..."
+echo "Downloading Yelp Polarity ..."
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=0Bz8a_Dbh9QhbNUpYQ2N3SGlFaDg' -O- | gsed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=0Bz8a_Dbh9QhbNUpYQ2N3SGlFaDg" -O yelp_review_polarity_csv.tar.gz && rm -rf /tmp/cookies.txt
 tar xvfz yelp_review_polarity_csv.tar.gz
+
+echo "Downloading Yelp Full ..."
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=0Bz8a_Dbh9QhbZlU4dXhHTFhZQU0' -O- | gsed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=0Bz8a_Dbh9QhbZlU4dXhHTFhZQU0" -O yelp_review_full_csv.tar.gz && rm -rf /tmp/cookies.txt
+tar xvfz yelp_review_full_csv.tar.gz
 
 echo "Downloading Sogou ..."
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=0Bz8a_Dbh9QhbUkVqNEszd0pHaFE' -O- | gsed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=0Bz8a_Dbh9QhbUkVqNEszd0pHaFE" -O sogou_news_csv.tar.gz && rm -rf /tmp/cookies.txt

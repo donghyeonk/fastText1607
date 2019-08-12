@@ -20,7 +20,7 @@ parser.add_argument('--data_path', type=str,
 parser.add_argument('--n_grams', type=int, default=2)
 parser.add_argument('--embedding_dim', type=int, default=10)
 
-parser.add_argument('--lr', type=float, default=2.5e-1,
+parser.add_argument('--lr', type=float, default=5e-1,
                     help='0.05, 0.1, 0.25, 0.5')
 parser.add_argument('--momentum', type=float, default=5e-1)  # SGD
 parser.add_argument('--wd', type=float, default=0)

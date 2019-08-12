@@ -50,7 +50,7 @@ class FTData(object):
         train_data = list()
         test_data = list()
 
-        spacy.prefer_gpu()
+        # spacy.prefer_gpu()
 
         # https://spacy.io/usage/facts-figures#benchmarks-models-english
         # python3 -m spacy download en_core_web_lg --user
@@ -59,13 +59,24 @@ class FTData(object):
 
         # train
         with open(self.train_data_path, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f, quotechar='"')
+            reader = csv.reader(f, delimiter=",", quotechar='"')
             for idx, features in enumerate(reader):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
-                x, x_len = self.process_example(features[1], features[2], nlp,
-                                                is_train=True,
-                                                padding=args.padding)
+
+                if len(features) == 3:  # AG, DBP, Sogou
+                    x, x_len = self.process_example(features[1], features[2],
+                                                    nlp,
+                                                    is_train=True,
+                                                    padding=args.padding)
+                elif len(features) == 2:  # Yelp P., Yelp F.
+                    x, x_len = self.process_example(features[1], None,
+                                                    nlp,
+                                                    is_train=True,
+                                                    padding=args.padding)
+                else:
+                    raise ValueError
+
                 train_data.append([x, x_len, y])
 
                 if (idx + 1) % self.config.log_interval == 0:
@@ -73,13 +84,24 @@ class FTData(object):
 
         # test
         with open(self.test_data_path, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f, quotechar='"')
+            reader = csv.reader(f, delimiter=",", quotechar='"')
             for idx, features in enumerate(reader):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
-                x, x_len = self.process_example(features[1], features[2], nlp,
-                                                is_train=False,
-                                                padding=args.padding)
+
+                if len(features) == 3:  # AG, DBP, Sogou
+                    x, x_len = self.process_example(features[1], features[2],
+                                                    nlp,
+                                                    is_train=False,
+                                                    padding=args.padding)
+                elif len(features) == 2:  # Yelp P., Yelp F.
+                    x, x_len = self.process_example(features[1], None,
+                                                    nlp,
+                                                    is_train=False,
+                                                    padding=args.padding)
+                else:
+                    raise ValueError
+
                 test_data.append([x, x_len, y])
 
         print('dictionary size {}'.format(len(self.ngram2idx)))
@@ -88,8 +110,20 @@ class FTData(object):
 
     def process_example(self, title, description, nlp, is_train=True,
                         padding=0):
+
+        title = title.strip()  # Sogou
+
+        if title and title[-1] not in ['.', '?', '!']:
+            title = title + '.'
+
+        # TODO to handle /n (yelp p.)
+
         # concat
-        title_desc = title + '. ' + description
+        if description:
+            description = description.strip()  # DBP
+            title_desc = title + ' ' + description
+        else:
+            title_desc = title
 
         if '\\' in title_desc:
             title_desc = title_desc.replace('\\', ' ')
@@ -106,9 +140,15 @@ class FTData(object):
         b_o_w = [token.text for token in doc]
 
         # add tags for ngrams
-        tagged_title_desc = \
-            '<p> ' + ' </s> '.join([s.text for s in doc.sents]) + \
-            ' </p>'
+
+        try:
+            tagged_title_desc = \
+                '<p> ' + ' </s> '.join([s.text for s in doc.sents]) + \
+                ' </p>'
+        except ValueError as e:
+            # print(title_desc, e)
+            tagged_title_desc = '<p> ' + title_desc + ' </p>'
+
         doc = nlp(tagged_title_desc)
         n_gram = get_ngram([token.text for token in doc],
                            n=self.config.n_gram)

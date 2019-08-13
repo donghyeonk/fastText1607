@@ -21,7 +21,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     $ python3 dataset.py --data_dir ./data/ag_news_csv --pickle_name ag.pkl --num_classes 4 --max_len 467
     
     # Run
-    $ python3 main.py --data_path ./data/ag_news_csv/ag.pkl
+    $ python3 main.py --data_path ./data/ag_news_csv/ag.pkl --batch_size 2048 --lr 0.5 --log_interval 20
     ```
   
     * Sogou
@@ -39,7 +39,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     $ python3 dataset.py --data_dir ./data/dbpedia_csv --pickle_name dbp.pkl --num_classes 14 --max_len 3013
     
     # Run
-    $ python3 main.py --data_path ./data/dbpedia_csv/dbp.pkl
+    $ python3 main.py --data_path ./data/dbpedia_csv/dbp.pkl --batch_size 2048 --lr 0.1 --log_interval 20
     ```
 
     * Yelp P.
@@ -50,7 +50,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     # Run
     $ python3 main.py --data_path ./data/yelp_review_polarity_csv/yelp_p.pkl --batch_size 1024 --lr 0.05 --log_interval 40
     ```
-  
+
     * Yelp F.
     ```
     # Create a pickle file: data/yelp_review_full_csv/yelp_f.pkl
@@ -59,7 +59,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     # Run
     $ python3 main.py --data_path ./data/yelp_review_full_csv/yelp_f.pkl --batch_size 1024 --lr 0.05 --log_interval 40
     ```
-    
+
     * Yahoo A.
     ```
     # Create a pickle file: data/yahoo_answers_csv/yahoo_a.pkl
@@ -72,7 +72,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     * Amazon F.
     ```
     # Create a pickle file: data/amazon_review_full_csv/amazon_f.pkl
-    $ python3 dataset.py --data_dir ./data/amazon_review_full_csv --pickle_name amazon_f.pkl --num_classes 5 --max_len 1000
+    $ python3 dataset.py --data_dir ./data/amazon_review_full_csv --pickle_name amazon_f.pkl --num_classes 5 --max_len 1214
     
     # Run
     $ python3 main.py --data_path ./data/amazon_review_full_csv/amazon_f.pkl --batch_size 1024 --lr 0.05 --log_interval 40
@@ -91,15 +91,15 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 
 | Model                         | AG           | Sogou        | DBpedia      | Yelp P.      | Yelp F.      | Yahoo A.      | Amazon F.      | Amazon P.      |
 |:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
-| fastText, h=10, bigram        | 92.5         | 96.8         | 98.6         | 95.7         | 63.9         |          |          |          |
-| My implementation of fastText | 92.4 (Ep. 5) | 97.1 (Ep. 2) | 98.5 (Ep. 3) | 95.9 (Ep. 1) | 63.5 (Ep. 1) |  (Ep. ) | (Ep. ) |  (Ep. ) |
+| fastText, h=10, bigram        | 92.5         | 96.8         | __98.6__         | 95.7         | __63.9__         |          |          |          |
+| My implementation of fastText | __92.6__ (Ep. 3) | __97.1__ (Ep. 2) | 98.5 (Ep. 3) | __95.9__ (Ep. 1) | 63.5 (Ep. 1) |  (Ep. ) | (Ep. ) |  (Ep. ) |
 
 
 * Training time for an epoch (CPU)
 
 |        | fastText | My implementation of fastText (Intel i7 8th gen.) | 
 |:------:|:--------:|:----------:|
-| AG     | 1s       |   11s      |
+| AG     | 1s       |   12s      |
 | Sogou  | 7s       | 1320s      |
 | DBpedia| 2s       |  100s      |
 | Yelp P.| 3s       |  378s      |
@@ -118,7 +118,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 | Yelp P.  |  6.4M     | No        |
 | Yelp F.  |  7.1M     | No        |
 | Yahoo A. | 17.9M     | Yes       |
-| Amazon F.|       |          |
+| Amazon F.| 21.7M     | Yes       |
 | Amazon P.| 24.3M     | Yes       |
 
 

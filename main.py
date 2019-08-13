@@ -201,6 +201,7 @@ def main():
     args_dict = vars(args)
     args_dict['num_classes'] = ft_dataset.num_classes
     args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
+    print('real_max_len', ft_dataset.real_max_len)
 
     pprint.PrettyPrinter().pprint(args.__dict__)
     train_loader, valid_loader, test_loader = \

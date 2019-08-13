@@ -64,7 +64,7 @@ class FTData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
 
-                if len(features) == 3:  # AG, Sogou, DBP, Amazon P., Amazon F.
+                if len(features) == 3:  # AG, Sogou, DBpedia, Amz P., Amz F.
                     x, x_len = self.process_example(features[1], features[2],
                                                     nlp,
                                                     is_train=True,
@@ -89,7 +89,7 @@ class FTData(object):
                 train_data.append([x, x_len, y])
 
                 if (idx + 1) % self.config.log_interval == 0:
-                    print(datetime.now(), idx + 1)
+                    print(datetime.now(), 'train', idx + 1)
 
         # test
         with open(self.test_data_path, 'r', newline='', encoding='utf-8') as f:
@@ -98,7 +98,7 @@ class FTData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
 
-                if len(features) == 3:  # AG, Sogou, DBP, Amazon P., Amazon F.
+                if len(features) == 3:  # AG, Sogou, DBpedia, Amz P., Amz F.
                     x, x_len = self.process_example(features[1], features[2],
                                                     nlp,
                                                     is_train=False,
@@ -122,26 +122,28 @@ class FTData(object):
 
                 test_data.append([x, x_len, y])
 
+                if (idx + 1) % self.config.log_interval == 0:
+                    print(datetime.now(), 'test', idx + 1)
+
         print('dictionary size {}'.format(len(self.ngram2idx)))
 
         return train_data, test_data
 
-    def process_example(self, title, description, nlp, is_train=True,
-                        padding=0):
+    def process_example(self, text0, text1, nlp, is_train=True, padding=0):
 
-        title = title.strip()  # Sogou
+        text0 = text0.strip()  # Sogou
 
-        if title and title[-1] not in ['.', '?', '!']:
-            title = title + '.'
+        if text0 and text0[-1] not in ['.', '?', '!']:
+            text0 = text0 + '.'
 
-        # TODO to handle /n (yelp p.)
+        # TODO to handle /n (yelp p., yelp f.)
 
         # concat
-        if description:
-            description = description.strip()  # DBP
-            title_desc = title + ' ' + description
+        if text1:
+            text1 = text1.strip()  # DBpedia
+            title_desc = text0 + ' ' + text1
         else:
-            title_desc = title
+            title_desc = text0
 
         if '\\' in title_desc:
             title_desc = title_desc.replace('\\', ' ')

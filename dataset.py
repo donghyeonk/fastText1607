@@ -64,13 +64,22 @@ class FTData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
 
-                if len(features) == 3:  # AG, DBP, Sogou
+                if len(features) == 3:  # AG, Sogou, DBP, Amazon P., Amazon F.
                     x, x_len = self.process_example(features[1], features[2],
                                                     nlp,
                                                     is_train=True,
                                                     padding=args.padding)
                 elif len(features) == 2:  # Yelp P., Yelp F.
                     x, x_len = self.process_example(features[1], None,
+                                                    nlp,
+                                                    is_train=True,
+                                                    padding=args.padding)
+                elif len(features) == 4:  # Yahoo A.
+                    if features[2]:
+                        f12 = features[1] + ' ' + features[2]
+                    else:
+                        f12 = features[1]
+                    x, x_len = self.process_example(f12, features[3],
                                                     nlp,
                                                     is_train=True,
                                                     padding=args.padding)
@@ -89,13 +98,22 @@ class FTData(object):
                 y = int(features[0]) - 1
                 assert 0 <= y < self.num_classes, y
 
-                if len(features) == 3:  # AG, DBP, Sogou
+                if len(features) == 3:  # AG, Sogou, DBP, Amazon P., Amazon F.
                     x, x_len = self.process_example(features[1], features[2],
                                                     nlp,
                                                     is_train=False,
                                                     padding=args.padding)
                 elif len(features) == 2:  # Yelp P., Yelp F.
                     x, x_len = self.process_example(features[1], None,
+                                                    nlp,
+                                                    is_train=False,
+                                                    padding=args.padding)
+                elif len(features) == 4:  # Yahoo A.
+                    if features[2]:
+                        f12 = features[1] + ' ' + features[2]
+                    else:
+                        f12 = features[1]
+                    x, x_len = self.process_example(f12, features[3],
                                                     nlp,
                                                     is_train=False,
                                                     padding=args.padding)
@@ -145,7 +163,7 @@ class FTData(object):
             tagged_title_desc = \
                 '<p> ' + ' </s> '.join([s.text for s in doc.sents]) + \
                 ' </p>'
-        except ValueError as e:
+        except ValueError:
             # print(title_desc, e)
             tagged_title_desc = '<p> ' + title_desc + ' </p>'
 

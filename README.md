@@ -25,6 +25,15 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     # Run
     $ python3 main.py --data_path ./data/ag_news_csv/ag.pkl
     ```
+  
+    * Sogou
+    ```
+    # Create a pickle file: data/sogou_news_csv/sogou.pkl
+    $ python3 dataset.py --data_dir ./data/sogou_news_csv --pickle_name sogou.pkl --num_classes 5 --max_len 90064
+    
+    # Run
+    $ python3 main.py --data_path ./data/sogou_news_csv/sogou.pkl --batch_size 1024 --lr 0.1 --log_interval 40
+    ```
 
     * DBPedia
     ```
@@ -35,39 +44,58 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     $ python3 main.py --data_path ./data/dbpedia_csv/dbp.pkl
     ```
 
-    * Sogou
-    ```
-    # Create a pickle file: data/sogou_news_csv/sogou.pkl
-    $ python3 dataset.py --data_dir ./data/sogou_news_csv --pickle_name sogou.pkl --num_classes 5 --max_len 90064
-    
-    # Run
-    $ python3 main.py --data_path ./data/sogou_news_csv/sogou.pkl --batch_size 1024 --lr 0.25
-    ```
-  
     * Yelp P.
     ```
     # Create a pickle file: data/yelp_review_polarity_csv/yelp_p.pkl
     $ python3 dataset.py --data_dir ./data/yelp_review_polarity_csv --pickle_name yelp_p.pkl --num_classes 2 --max_len 2955
     
     # Run
-    $ python3 main.py --data_path ./data/yelp_review_polarity_csv/yelp_p.pkl --batch_size 1024 --lr 0.25
+    $ python3 main.py --data_path ./data/yelp_review_polarity_csv/yelp_p.pkl --batch_size 1024 --lr 0.05 --log_interval 40
     ```
   
     * Yelp F.
     ```
     # Create a pickle file: data/yelp_review_full_csv/yelp_f.pkl
-    $ python3 dataset.py --data_dir ./data/yelp_review_full_csv --pickle_name yelp_f.pkl --num_classes 5 --max_len 
+    $ python3 dataset.py --data_dir ./data/yelp_review_full_csv --pickle_name yelp_f.pkl --num_classes 5 --max_len 2955
     
     # Run
-    $ python3 main.py --data_path ./data/yelp_review_full_csv/yelp_f.pkl
+    $ python3 main.py --data_path ./data/yelp_review_full_csv/yelp_f.pkl --batch_size 1024 --lr 0.05 --log_interval 40
     ```
     
+    * Yahoo A.
+    ```
+    # Create a pickle file: data/yahoo_answers_csv/yahoo_a.pkl
+    $ python3 dataset.py --data_dir ./data/yahoo_answers_csv --pickle_name yahoo_a.pkl --num_classes 10 --max_len 8024
+    
+    # Run
+    $ python3 main.py --data_path ./data/yahoo_answers_csv/yahoo_a.pkl --batch_size 1024 --lr 0.05 --log_interval 40
+    ```
+
+    * Amazon P.
+    ```
+    # Create a pickle file: data/amazon_review_polarity_csv/amazon_p.pkl
+    $ python3 dataset.py --data_dir ./data/amazon_review_polarity_csv --pickle_name amazon_p.pkl --num_classes 2 --max_len 1000
+    
+    # Run
+    $ python3 main.py --data_path ./data/amazon_review_polarity_csv/yahoo_a.pkl --batch_size 1024 --lr 0.05 --log_interval 40
+    ```
+  
+    * Amazon F.
+    ```
+    # Create a pickle file: data/amazon_review_full_csv/amazon_f.pkl
+    $ python3 dataset.py --data_dir ./data/amazon_review_full_csv --pickle_name amazon_f.pkl --num_classes 5 --max_len 1000
+    
+    # Run
+    $ python3 main.py --data_path ./data/amazon_review_full_csv/amazon_f.pkl --batch_size 1024 --lr 0.05 --log_interval 40
+    ```
+
+
 * Performance (accuracy %)
 
-| Model                         | AG           | Sogou        | DBP          | Yelp P.      | Yelp F.      |
-|:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
-| fastText, h=10, bigram        | 92.5         | 96.8         | 98.6         | 95.7         | 63.9         |
-| My implementation of fastText | 92.4 (Ep. 5) | 97.0 (Ep. 2) | 98.5 (Ep. 3) | 95.8 (Ep. 1) |              |
+| Model                         | AG           | Sogou        | DBP          | Yelp P.      | Yelp F.      | Yahoo A.      | Amazon P.      | Amazon F.      |
+|:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
+| fastText, h=10, bigram        | 92.5         | 96.8         | 98.6         | 95.7         | 63.9         |          |          |          |
+| My implementation of fastText | 92.4 (Ep. 5) | 97.1 (Ep. 2) | 98.5 (Ep. 3) | 95.9 (Ep. 1) | 63.5 (Ep. 1) |  (Ep. ) | (Ep. ) |  (Ep. ) |
 
 
 * Training time for an epoch (CPU)
@@ -75,16 +103,19 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 |        | fastText | My implementation of fastText (Intel i7 8th gen.) | 
 |:------:|:--------:|:----------:|
 | AG     | 1s       |   11s      |
-| Sogou  | 7s       | 1800s      |
+| Sogou  | 7s       | 1320s      |
 | DBP    | 2s       |  100s      |
 | Yelp P.| 3s       |  378s      |
-| Yelp F.| 4s       |        |
+| Yelp F.| 4s       |  459s      |
+| Yahoo A.| s       |  s      |
+| Amazon P.| s       |  s      |
+| Amazon F.| s       |  s      |
 
 * Embeddings are used instead of binary encoding (=multi-hot).
 * Diff. from the paper
     * Adam optimizer instead of SGD (stochastic gradient descent)
-    * No Hashing trick because the vocabulary size (1.4M, 6.7M, 3.4M) is less than 10M
-    * No Hierarchical softmax because the number of classes is only 4, 14, 5
+    * No Hashing trick because the vocabulary size (1.4M ~ 7.1M) is less than 10M
+    * No Hierarchical softmax because the number of classes is only 2 ~ 14
 * Reference
     * https://github.com/poliglot/fasttext
     * https://github.com/bentrevett/pytorch-sentiment-analysis

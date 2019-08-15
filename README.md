@@ -118,8 +118,8 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 | Yelp P.  |  6.4M     | No        | 560K | 38K |
 | Yelp F.  |  7.1M     | No        | 650K | 50K |
 | Yahoo A. | 17.9M     | Yes       | 1.4M | 60K |
-| Amazon F.| 21.7M     | Yes       |||
-| Amazon P.| 24.3M     | Yes       |||
+| Amazon F.| 21.7M     | Yes       | 3M   |650K |
+| Amazon P.| 24.3M     | Yes       | 3.6M |400K |
 
 
 * Embeddings are used instead of binary encoding (=multi-hot).

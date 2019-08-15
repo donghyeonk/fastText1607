@@ -39,9 +39,9 @@ class FTData(object):
 
         # except for PAD
         if len(self.ngram2idx) > 10 * 1000000 + 1:
-            print('Hashing Trick ...')
+            print(datetime.now(), 'Hashing Trick ...')
             self.hashing_trick()
-            print('Done')
+            print(datetime.now(), 'Done')
             self.hashed = True
 
         if self.valid_size_per_class > 0:
@@ -232,13 +232,13 @@ class FTData(object):
             return count_dict
 
         def set_hashed(hasher, examples):
-            f = hasher.transform((lst2dict(n[0]) for n in examples))
-            for htr, tr in zip(f, examples):
+            f = hasher.transform((lst2dict(e[0]) for e in examples))
+            for htr, e in zip(f, examples):
                 sprs2hbow = list()
                 for idc, d in zip(htr.indices, htr.data):
                     for _ in range(int(d)):
                         sprs2hbow.append(idc + 1)
-                self.train_data[0] = sprs2hbow
+                e[0] = sprs2hbow
 
         # bigram 10M, otherwise 100M
         n_features = 10 * 1000000 if self.config.n_gram == 2 else 100 * 1000000

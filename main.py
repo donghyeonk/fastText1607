@@ -129,11 +129,13 @@ def train(rank, device, model, args, use_cuda):
 
     with open(args.data_path, 'rb') as f:
         ft_dataset = pickle.load(f)
-    assert len(ft_dataset.ngram2idx) == args.vocab_size, \
-        len(ft_dataset.ngram2idx)
+
     args_dict = vars(args)
     args_dict['num_classes'] = ft_dataset.num_classes
-    args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
+    if ft_dataset.hashed:
+        args_dict['vocab_size'] = 1 + 10 * 1000000  # PAD, bigram
+    else:
+        args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
     print('real_max_len', ft_dataset.real_max_len)
 
     train_loader, valid_loader, test_loader = \
@@ -203,7 +205,10 @@ def main():
 
     args_dict = vars(args)
     args_dict['num_classes'] = ft_dataset.num_classes
-    args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
+    if ft_dataset.hashed:
+        args_dict['vocab_size'] = 1 + 10 * 1000000  # PAD, bigram
+    else:
+        args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
     print('real_max_len', ft_dataset.real_max_len)
 
     pprint.PrettyPrinter().pprint(args.__dict__)

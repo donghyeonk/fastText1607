@@ -4,9 +4,10 @@ import html
 import numpy as np
 import re
 import spacy
-import torch
-from torch.utils.data import Dataset
 import sys
+import torch
+from sklearn.feature_extraction import FeatureHasher
+from torch.utils.data import Dataset
 
 
 class FTData(object):
@@ -24,8 +25,6 @@ class FTData(object):
 
         csv.field_size_limit(sys.maxsize)
 
-        # TODO hashing trick
-
         self.ngram2idx = dict()
         self.idx2ngram = dict()
         self.ngram2idx['PAD'] = 0
@@ -35,6 +34,16 @@ class FTData(object):
 
         self.html_tag_re = re.compile(r'<[^>]+>')
         self.train_data, self.test_data = self.load_csv()
+
+        self.hashed = False
+
+        # except for PAD
+        if len(self.ngram2idx) > 10 * 1000000 + 1:
+            print('Hashing Trick ...')
+            self.hashing_trick()
+            print('Done')
+            self.hashed = True
+
         if self.valid_size_per_class > 0:
             self.train_data, self.valid_data = \
                 self.split_tr_va(n_class_examples=config.valid_size_per_class)
@@ -125,7 +134,7 @@ class FTData(object):
                 if (idx + 1) % self.config.log_interval == 0:
                     print(datetime.now(), 'test', idx + 1)
 
-        print('dictionary size {}'.format(len(self.ngram2idx)))
+        print('dictionary size (before hashing) {}'.format(len(self.ngram2idx)))
 
         return train_data, test_data
 
@@ -210,6 +219,33 @@ class FTData(object):
             assert len(x) == self.max_len
 
         return x, x_len
+
+    def hashing_trick(self):
+
+        def lst2dict(lst):
+            count_dict = dict()
+            for i in lst:
+                if str(i) in count_dict:
+                    count_dict[str(i)] += 1
+                else:
+                    count_dict[str(i)] = 1
+            return count_dict
+
+        def set_hashed(hasher, examples):
+            f = hasher.transform((lst2dict(n[0]) for n in examples))
+            for htr, tr in zip(f, examples):
+                sprs2hbow = list()
+                for idc, d in zip(htr.indices, htr.data):
+                    for _ in range(int(d)):
+                        sprs2hbow.append(idc + 1)
+                self.train_data[0] = sprs2hbow
+
+        # bigram 10M, otherwise 100M
+        n_features = 10 * 1000000 if self.config.n_gram == 2 else 100 * 1000000
+        h = FeatureHasher(n_features=n_features, alternate_sign=False)
+
+        set_hashed(h, self.train_data)
+        set_hashed(h, self.test_data)
 
     def count_labels(self):
         def count(data):

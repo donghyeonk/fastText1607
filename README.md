@@ -48,7 +48,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     $ python3 dataset.py --data_dir ./data/yelp_review_polarity_csv --pickle_name yelp_p.pkl --num_classes 2 --max_len 2955
     
     # Run
-    $ python3 main.py --data_path ./data/yelp_review_polarity_csv/yelp_p.pkl --batch_size 1024 --lr 0.05 --log_interval 40
+    $ python3 main.py --data_path ./data/yelp_review_polarity_csv/yelp_p.pkl --batch_size 1024 --lr 0.1 --log_interval 40
     ```
 
     * Yelp F.
@@ -90,9 +90,9 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 * Performance (accuracy %)
 
 | Model                         | AG           | Sogou        | DBpedia      | Yelp P.      | Yelp F.      | Yahoo A.      | Amazon F.      | Amazon P.      |
-|:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
+|:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:-------------:|:--------------:|:--------------:|
 | fastText, h=10, bigram        | 92.5         | 96.8         | __98.6__         | 95.7         | __63.9__         |          |          |          |
-| My implementation of fastText | __92.6__ (Ep. 3) | __97.1__ (Ep. 2) | 98.5 (Ep. 3) | __95.9__ (Ep. 1) | 63.5 (Ep. 1) |  (Ep. ) | (Ep. ) |  (Ep. ) |
+| My implementation of fastText | __92.6__ (Ep. 3) | __97.1__ (Ep. 5) | 98.1 (Ep. 4) | 95.7 (Ep. 1) | 63.5 (Ep. 1) |  (Ep. ) | (Ep. ) |  (Ep. ) |
 
 
 * Training time for an epoch (CPU)
@@ -101,25 +101,25 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 |:------:|:--------:|:----------:|
 | AG     | 1s       |   12s      |
 | Sogou  | 7s       | 1320s      |
-| DBpedia| 2s       |  100s      |
-| Yelp P.| 3s       |  378s      |
+| DBpedia| 2s       |  224s      |
+| Yelp P.| 3s       |  645s      |
 | Yelp F.| 4s       |  459s      |
 | Yahoo A.| 5s       |  s      |
 | Amazon F.| 9s       |  s      |
 | Amazon P.| 10s       |  s      |
 
-* Dictionary size
+* Dictionary size & data size
 
-|Dataset   | Size      | Is Hashing Trick needed? |
-|:--------:|:---------:|:---------:|
-| AG       |  1.4M     | No        |
-| Sogou    |  3.4M     | No        | 
-| DBP      |  6.6M     | No        |
-| Yelp P.  |  6.4M     | No        |
-| Yelp F.  |  7.1M     | No        |
-| Yahoo A. | 17.9M     | Yes       |
-| Amazon F.| 21.7M     | Yes       |
-| Amazon P.| 24.3M     | Yes       |
+|Dataset   | Size      | Is Hashing Trick needed? | # train | # test |
+|:--------:|:---------:|:---------:|:----:|:---:|
+| AG       |  1.4M     | No        | 120K |7.6K |
+| Sogou    |  3.4M     | No        | 450K | 60K |
+| DBP      |  6.6M     | No        | 560K | 70K |
+| Yelp P.  |  6.4M     | No        | 560K | 38K |
+| Yelp F.  |  7.1M     | No        | 650K | 50K |
+| Yahoo A. | 17.9M     | Yes       | 1.4M | 60K |
+| Amazon F.| 21.7M     | Yes       |||
+| Amazon P.| 24.3M     | Yes       |||
 
 
 * Embeddings are used instead of binary encoding (=multi-hot).

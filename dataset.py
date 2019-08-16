@@ -39,7 +39,7 @@ class FTData(object):
 
         # except for PAD
         if len(self.ngram2idx) > 10 * 1000000 + 1:
-            print(datetime.now(), 'Hashing Trick ...')
+            print(datetime.now(), 'Hashing Trick ... It may take long time.')
             self.hashing_trick()
             print(datetime.now(), 'Done')
             self.hashed = True
@@ -243,6 +243,7 @@ class FTData(object):
         # bigram 10M, otherwise 100M
         n_features = 10 * 1000000 if self.config.n_gram == 2 else 100 * 1000000
         h = FeatureHasher(n_features=n_features, alternate_sign=False)
+        print('FeatureHasher #features', n_features)
 
         set_hashed(h, self.train_data)
         set_hashed(h, self.test_data)

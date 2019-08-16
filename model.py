@@ -26,9 +26,9 @@ class FastTextMuitiHot(nn.Module):
 
     def init_linears(self):
         nn.init.xavier_uniform_(self.linear.weight, gain=1)
-        nn.init.uniform_(self.linear.bias)
+        nn.init.zeros_(self.linear.bias)
         nn.init.xavier_uniform_(self.fc.weight, gain=1)
-        nn.init.uniform_(self.fc.bias)
+        nn.init.zeros_(self.fc.bias)
 
     def lr_decay(self, epoch, optimizer):
         # https://calculus.subwiki.org/wiki/Gradient_descent_with_decaying_learning_rate
@@ -79,7 +79,7 @@ class FastText(nn.Module):
 
     def init_linears(self):
         nn.init.xavier_uniform_(self.fc.weight, gain=1)
-        nn.init.uniform_(self.fc.bias)
+        nn.init.zeros_(self.fc.bias)
 
     def lr_decay(self, epoch, optimizer):
         # https://calculus.subwiki.org/wiki/Gradient_descent_with_decaying_learning_rate

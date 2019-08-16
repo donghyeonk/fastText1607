@@ -132,8 +132,10 @@ def train(rank, device, model, args, use_cuda):
 
     args_dict = vars(args)
     args_dict['num_classes'] = ft_dataset.num_classes
-    if ft_dataset.hashed:
-        args_dict['vocab_size'] = 1 + 10 * 1000000  # PAD, bigram
+    if hasattr(ft_dataset, 'hashed') and ft_dataset.hashed:
+        n_features = 10 * 1000000 if ft_dataset.config.n_gram == 2 \
+            else 100 * 1000000
+        args_dict['vocab_size'] = 1 + n_features  # PAD, #hasher features
     else:
         args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
     print('real_max_len', ft_dataset.real_max_len)
@@ -205,8 +207,10 @@ def main():
 
     args_dict = vars(args)
     args_dict['num_classes'] = ft_dataset.num_classes
-    if ft_dataset.hashed:
-        args_dict['vocab_size'] = 1 + 10 * 1000000  # PAD, bigram
+    if hasattr(ft_dataset, 'hashed') and ft_dataset.hashed:
+        n_features = 10 * 1000000 if ft_dataset.config.n_gram == 2 \
+            else 100 * 1000000
+        args_dict['vocab_size'] = 1 + n_features  # PAD, #hasher features
     else:
         args_dict['vocab_size'] = len(ft_dataset.ngram2idx)
     print('real_max_len', ft_dataset.real_max_len)

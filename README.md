@@ -88,6 +88,7 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
     ```
 
 * Performance (accuracy %)
+    * Results may vary slightly depending on your experimental environment.
 
 | Model                         | AG           | Sogou        | DBpedia      | Yelp P.      | Yelp F.      | Yahoo A.      | Amazon F.      | Amazon P.      |
 |:-----------------------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:-------------:|:--------------:|:--------------:|
@@ -96,10 +97,11 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 
 
 * Training time for an epoch (CPU)
-
+    * Results may vary slightly depending on your experimental environment.
+ 
 |        | fastText | My implementation of fastText (Intel i7 8th gen.) | 
 |:------:|:--------:|:----------:|
-| AG     | 1s       |   12s      |
+| AG     | 1s       | 12s      |
 | Sogou  | 7s       | 30m      |
 | DBpedia| 2s       |  3m      |
 | Yelp P.| 3s       |  7m      |
@@ -110,11 +112,11 @@ Unofficial PyTorch Implementation of "Bag of Tricks for Efficient Text Classific
 
 * Dictionary size & data size
 
-|Dataset   | Size      | Is Hashing Trick needed? | # train | # test | # classes |
+|Dataset   | Size      | Is Hashing Trick needed? | # train examples | # test examples | # classes |
 |:--------:|:---------:|:---------:|:----:|:---:|:---:| 
 | AG       |  1.4M     | No        | 120K |7.6K | 4| 
 | Sogou    |  3.4M     | No        | 450K | 60K | 5|
-| DBP      |  6.6M     | No        | 560K | 70K |14|
+| DBpedia  |  6.6M     | No        | 560K | 70K |14|
 | Yelp P.  |  6.4M     | No        | 560K | 38K | 2|
 | Yelp F.  |  7.1M     | No        | 650K | 50K | 5|
 | Yahoo A. | 17.9M     | Yes       | 1.4M | 60K |10|
